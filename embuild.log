@@ -1,0 +1,1000 @@
+ 1417  sudo apt install -y lua5.4
+ 1418  code .
+ 1419  apt install -y neovim
+ 1420  neovim
+ 1421  nvim
+ 1422  vim
+ 1423  nvim
+ 1424  vim
+ 1425  nvim
+ 1426  vim
+ 1427  nvim
+ 1428  nvim --version
+ 1429  apt search neovim
+ 1430  ./configure --disable-wx 
+ 1431  make
+ 1432  ./ucblogo
+ 1433  ./configure --disable-wx --enable-x11
+ 1434  make
+ 1435  ./ucblogo
+ 1436  ls /usr/local/share/ucblogo/logolib
+ 1437  ls /usr/local/share/ucblogo/
+ 1438  ./configure --help
+ 1439  ./configure --disable-wx --enable-x11 --prefix=$HOME
+ 1440  make
+ 1441  ./configure --disable-wx --enable-x11 --prefix=$HOME
+ 1442  make
+ 1443  ./configure --disable-wx --enable-x11 --prefix=$HOME
+ 1444  make
+ 1445  ./ucblogo
+ 1446  make clean
+ 1447  make
+ 1448  ./ucblogo
+ 1449  ./configure --prefix=$HOME
+ 1450  ./ucblogo
+ 1451  ls logolib/
+ 1452  ./ucblogo --help
+ 1453  ./ucblogo /?
+ 1454  ./configure --prefix=$HOME |grep lib
+ 1455  ./configure --help |less
+ 1456  make clean
+ 1457  ./configure --prefix=$HOME
+ 1458  ./ucblogo
+ 1459  make
+ 1460  ./ucblogo
+ 1461  ls
+ 1462  ls logo
+ 1463  ls logolib/
+ 1464  find . -iname 'wes*'
+ 1465  sudo mindupdate
+ 1466  sudo mindupgrade
+ 1467  sudo mintupgrade
+ 1468  ps auxw |grep apt
+ 1469  kill 290999
+ 1470  sudo kill 290999
+ 1471  sudo mintupgrade
+ 1472  sudo shutdown -r now
+ 1473  ls
+ 1474  cd ~/Do
+ 1475  cd ~/Documents/
+ 1476  ls
+ 1477  cat tri2
+ 1478  vim tri2
+ 1479  cd ucblogo-code/
+ 1480  ./ucblogo
+ 1481  exit
+ 1482  ucblogo 
+ 1483  ucblogo ~/Documents/tri2
+ 1484  bg
+ 1485  cat ~/Documents/fern.logo 
+ 1486  cd ../Documents/
+ 1487  ls
+ 1488  cat tri3
+ 1489  cat tri2
+ 1490  dir
+ 1491  cat tree.logo
+ 1492  cat trees.logo
+ 1493  dirt
+ 1494  dir
+ 1495  cat trees
+ 1496  cat tri2
+ 1497  cd ../ucblogo-code/
+ 1498  ./ucblogo
+ 1499  ./ucblogo ~/Documents/tree2.logo 
+ 1500  history |grep configure
+ 1501  ./configure --help
+ 1502  ./configure --help |obj
+ 1503  ./configure --help |grep obj
+ 1504  ./configure --prefix=$HOME --enable-objects
+ 1505  make -j8
+ 1506  ./ucblogo
+ 1507  rv
+ 1508  cd \marty
+ 1509  cd cd cr
+ 1510  cd \cra
+ 1511  cd \
+ 1512  rm -rf martypc-freedos/
+ 1513  locate marty
+ 1514  locate martypc
+ 1515  cd ../martypc/
+ 1516  dir
+ 1517  cargo run -r -- --machine-config-name ibm5160_hdd --machine-config-overlays ibm_mda,lotech_ems
+ 1518  cargo run -r -- --machine-config-name ibm5160_hdd --machine-config-overlays ibm_cga_and_mda,lotech_ems 
+ 1519  cd install/
+ 1520  cargo run -r -- --machine-config-name ibm5160_hdd --machine-config-overlays ibm_cga_and_mda,lotech_ems 
+ 1521  mame
+ 1522  bg
+ 1523  kill %1
+ 1524  kill -9 %1
+ 1525  cargo run -r -- --machine-config-name ibm5160_hdd --machine-config-overlays ibm_cga_and_mda,lotech_ems 
+ 1526  locate github
+ 1527  find ~ -iname "*github*"
+ 1528  locate recovery
+ 1529  cd ~/Downloads/
+ 1530  ls /t |head
+ 1531  ls t |head
+ 1532  ls -t |head
+ 1533  vboxmanage convertfromraw hd64-minix.img 
+ 1534  vboxmanage convertfromraw hd64-minix.img  hd64-minix.vdi
+ 1535  ifconfig
+ 1536  route -n
+ 1537  node
+ 1538  cd ~/Documents/
+ 1539  dir *.svg
+ 1540  which open
+ 1541  man open
+ 1542  open test.svg 
+ 1543  grep -i define *.logo
+ 1544  ls *.logo
+ 1545  ucblogo fern.logo 
+ 1546  ucblogo koch2.logo 
+ 1547  ucblogo koch.logo
+ 1548  ucblogo tree2.logo
+ 1549  ucblogo trees.logo
+ 1550  ucblogo tree2.logo
+ 1551  ucblogo svn-turtle.logo tree2.logo
+ 1552  ucblogo svg-turtle.logo tree2.logo
+ 1553  ucblogo svg-turtle.logo 
+ 1554  type test.sv
+ 1555  type test2.svg
+ 1556  ucblogo svg-turtle.logo 
+ 1557  type test2.svg
+ 1558  ls *.svg
+ 1559  rm *.svg
+ 1560  ucblogo svg-turtle.logo 
+ 1561  ucblogo svg-turtle.logo tree2.logo
+ 1562  ucblogo svg-turtle.logo
+ 1563  cat test.svg 
+ 1564  ucblogo svg-turtle.logo
+ 1565  cat test.
+ 1566  cat test.svg 
+ 1567  rm test.svg 
+ 1568  ucblogo svg-turtle.logo
+ 1569  cat test.svg 
+ 1570  ucblogo svg-turtle.logo
+ 1571  cat test.svg
+ 1572  ls *.svg
+ 1573  rm *.svg
+ 1574  ucblogo svg-turtle.logo
+ 1575  ls *.svg
+ 1576  open test.q
+ 1577  open test.svg 
+ 1578  view test.svg 
+ 1579  ucblogo svg-turtle.logo
+ 1580  view test.svg 
+ 1581  ucblogo svg-turtle.logo
+ 1582  cat svg-turtle.logo 
+ 1583  rm test.svg 
+ 1584  ucblogo svg-turtle.logo
+ 1585  cat test.svg 
+ 1586  ucblogo 
+ 1587  ucblogo svg-turtle.logo
+ 1588  cat test.svg 
+ 1589  open test.
+ 1590  open test.svg 
+ 1591  ucblogo svg-turtle.logo
+ 1592  open test.
+ 1593  open test.svg 
+ 1594  ucblogo svg-turtle.logo
+ 1595  ucblogo
+ 1596  ucblogo svg-turtle.logo
+ 1597  tail *.logo
+ 1598  ucblogo svg-turtle.logo trees.logo
+ 1599  ucblogo svg-turtle.logo tree2.logo
+ 1600  ucblogo svg-turtle.logo lsys.logo 
+ 1601  ucblogo svg-turtle.logo fern.logo 
+ 1602  ucblogo tree2.logo  svg-turtle.logo  
+ 1603  head svg-turtle.logo h
+ 1604  head -n 50 trees2.svg
+ 1605  head -n 50 tree2.svg
+ 1606  ucblogo tree2.logo  svg-turtle.logo  
+ 1607  head -n 50 tree2.svg
+ 1608  ucblogo tree2.logo  svg-turtle.logo  
+ 1609  ucblogo svg-turtle.logo  serpinski
+ 1610  kill -9 %1
+ 1611  ucblogo svg-turtle.logo  
+ 1612  ucblogo serpinski
+ 1613  kill %1
+ 1614  jobs
+ 1615  kill %2
+ 1616  jobs
+ 1617  ls
+ 1618  cat serpinski
+ 1619  cat tri2
+ 1620  ucblogo svg-turtle.logo tri2 
+ 1621  ucblogo svg-turtle.logo 
+ 1622  vim tri2 
+ 1623  ucblogo tri2
+ 1624  cd ucblogo-code/
+ 1625  ./ucblogo
+ 1626  echo $EDITOR
+ 1627  export EDITOR=/usr/bin/vim
+ 1628  ./ucblogo
+ 1629  vim tri2
+ 1630  ls ~/Documents/
+ 1631  vim ~/Documents/tri3
+ 1632  vim ~/Documents/tri2
+ 1633  ./ucblogo
+ 1634  vim ~/Documents/tree2.logo
+ 1635  ucblogo 
+ 1636  bg
+ 1637  vim ~/Documents/tree2.logo
+ 1638  code .
+ 1639  vboxmanage convertfromraw
+ 1640  rc
+ 1641  ./ucblogo
+ 1642  make install
+ 1643  ./ucblogo
+ 1644  make clean
+ 1645  make -j8
+ 1646  make install
+ 1647  ./ucblogo
+ 1648  ./ucblogo -help
+ 1649  ./ucblogo --help
+ 1650  vim README.md 
+ 1651  grep -i startup *
+ 1652  vim usermanual 
+ 1653  vim ~/startup.lg
+ 1654  ./ucblogo
+ 1655  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1656  ./ucblogo
+ 1657  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1658  open ~/Documents/test.svg 
+ 1659  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1660  open ~/Documents/test.svg 
+ 1661  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1662  open ~/Documents/test.svg 
+ 1663  cat ~/Documents/test.svg 
+ 1664  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1665  cat ~/Documents/test2.svg 
+ 1666  rm ~/Documents/test.svg 
+ 1667  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1668  ls
+ 1669  ls *.svg
+ 1670  open test.svg 
+ 1671  open test2.svg 
+ 1672  xdg-open test.svg 
+ 1673  xdg-open --help
+ 1674  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1675  cat test2.svg 
+ 1676  cat test.svg 
+ 1677  ls *.svg
+ 1678  rm test*.svg
+ 1679  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1680  cat test2.svg 
+ 1681  xdg-open test2.svg 
+ 1682  ./ucblogo ~/Documents/svg-turtle.logo 
+ 1683  grep scale *
+ 1684  grep scale *.logo
+ 1685  grep -i define *.logo
+ 1686  type test2.svg
+ 1687  ls *.svg
+ 1688  cat test2.svg 
+ 1689  xdg-open test2.svg 
+ 1690  rm test2.svg 
+ 1691  ls *.svg
+ 1692  top
+ 1693  vim logolib/
+ 1694  set
+ 1695  env
+ 1696  env |less
+ 1697  env --help
+ 1698  man env
+ 1699  man set
+ 1700  envsubst 
+ 1701  man envsubst
+ 1702  ucblogo
+ 1703  ucblogo testtools.logo 
+ 1704  ucblogo tools.logo testtools.logo 
+ 1705  ucblogo 
+ 1706  ucblogo svg-turtle.logo 
+ 1707  grep serp *
+ 1708  ucblogo tri2
+ 1709  ucblogo svg-turtle.logo tri2
+ 1710  ucblogo svg-turtle.logo
+ 1711  ucblogo tri2 svg-turtle.logo
+ 1712  ucblogo
+ 1713  ucblogo tools.logo testtools.logo 
+ 1714  ucblogo
+ 1715  ucblogo tools.logo testtools.logo 
+ 1716  cd ~/Do
+ 1717  cd ~/Downloads/
+ 1718  umount
+ 1719  dd if=/dev/zero of=nvga.img bs=1k count=1440
+ 1720  format
+ 1721  fdisk
+ 1722  mkfs.fat nvga.img 
+ 1723  mkdir nvga
+ 1724  umount nvga.img nvga
+ 1725  mount nvga.img nvga
+ 1726  mount /?
+ 1727  mount --help
+ 1728  mount nvga.img nvga
+ 1729  ls nvga
+ 1730  man mount
+ 1731  mount nvga.img nvga -o loop
+ 1732  ls /dev/loop *
+ 1733  ls /dev/loop*
+ 1734  ls /dev/loop* 
+ 1735  ls -l /dev/loop*
+ 1736  group
+ 1737  gropus
+ 1738  groups
+ 1739  sudo mount nvga.img nvga
+ 1740  ls
+ 1741  ls -t
+ 1742  ls -t |head
+ 1743  mv VIDMODES.COM VDDVBE.* VBESVGA.* nvga
+ 1744  sudo mv VIDMODES.COM VDDVBE.* VBESVGA.* nvga
+ 1745  sudo cp VIDMODES.COM VDDVBE.* VBESVGA.* nvga
+ 1746  ls nvga
+ 1747  ls -l nfga
+ 1748  ls -l nvga
+ 1749  ls
+ 1750  cd ../Documents/
+ 1751  ls
+ 1752  gvim tri2
+ 1753  vim tri2
+ 1754  vim generator.logo
+ 1755  vim koch.logo 
+ 1756  vim lsys.logo
+ 1757  vim lsys.logo 
+ 1758  cat lsys.logo 
+ 1759  vim plant.logo
+ 1760  vim try.logo
+ 1761  grep pusht *
+ 1762  vim plant.logo 
+ 1763  ucblogo plant.logo 
+ 1764  ~/bin/ucblogo plant.logo 
+ 1765  vim plant.logo 
+ 1766  vim svg-turtle.logo
+ 1767  ls *.logo
+ 1768  ucblogo svg-turtle.logo trees.logo 
+ 1769  vg
+ 1770  bg
+ 1771  ls *.svg
+ 1772  vim svg-turtle.logo 
+ 1773  grep scale *.logo
+ 1774  vim pressure.logo 
+ 1775  cat test.svg 
+ 1776  open test.svg 
+ 1777  ucblogo
+ 1778  grep scale *
+ 1779  vim svg-turtle.logo 
+ 1780  vim tools.logo
+ 1781  locate vital
+ 1782  open /home/jeff/Downloads/family vital records.odt
+ 1783  open "/home/jeff/Downloads/family vital records.odt"
+ 1784  locate resue
+ 1785  locate resume
+ 1786  vim tools.logo
+ 1787  top
+ 1788  cd ../ucblogo-code/
+ 1789  git pull
+ 1790  ./ucblogo
+ 1791  vim tools.logo
+ 1792  cat startup.lg
+ 1793  cat startup.logo
+ 1794  cat ~/startup.lg 
+ 1795  grep license *
+ 1796  grep licenseplate *
+ 1797  grep -r licenseplate &
+ 1798  grep -r licenseplate *
+ 1799  ./ucblogo
+ 1800  grep -r 'make "name'
+ 1801  grep -r 'Logo' *
+ 1802  grep -r '"Logo' *
+ 1803  head configure.ac 
+ 1804  head config.log 
+ 1805  ./configure --prefix=/home/jeff
+ 1806  make -j9
+ 1807  make install
+ 1808  ./ucblogo
+ 1809  ucblogo tools.logo testtools.logo 
+ 1810  grep scope *
+ 1811  vim koch.logo 
+ 1812  grep scale *
+ 1813  vim pressure.logo 
+ 1814  grep pusht *
+ 1815  vim plant.logo 
+ 1816  grep pi *
+ 1817  grep pusht *
+ 1818  vim plant.logo 
+ 1819  ls
+ 1820  cat foo.logo 
+ 1821  cat koch2.logo 
+ 1822  cat koch2.logo \
+ 1823  LS
+ 1824  ls
+ 1825  vim *.logo
+ 1826  ucblogo 
+ 1827  bg
+ 1828  grep return *
+ 1829  vim pressure.logo 
+ 1830  ucblogo tools.logo 
+ 1831  ucblogo tools.logo lsys.logo
+ 1832  ucblogo tools.logo lsys.logo kochcurve.logo
+ 1833  vim tools.logo
+ 1834  ucblogo tools.logo lsys.logo kochcurve.logo
+ 1835  vim tools.logo 
+ 1836  cat startup.logo
+ 1837  cat startup.lg
+ 1838  ucblogo
+ 1839  grep license  *
+ 1840  ucblogo tools.logo lsys.logo
+ 1841  cd Documents/
+ 1842  la
+ 1843  ls
+ 1844  vim tools.logo 
+ 1845  vim lsys.logo
+ 1846  cp lsys.logo lsys.logo.old
+ 1847  vim lsys.logo
+ 1848  top
+ 1849  man sys/time.h
+ 1850  man time
+ 1851  man 2 time
+ 1852  man 2 gettimeofday
+ 1853  ./ucblogo csls/mines 
+ 1854  ./ucblogo csls/basic 
+ 1855  vim csls
+ 1856  apt search ffi
+ 1857  apt search libffi
+ 1858  top
+ 1859  cd ~
+ 1860  cd ucblogo-code/
+ 1861  git status
+ 1862  git pull
+ 1863  code .
+ 1864  man getenv
+ 1865  ucblogo
+ 1866  make
+ 1867  ucblogo
+ 1868  ./ucblogo
+ 1869  ls
+ 1870  vim README.md 
+ 1871  cd test
+ 1872  ./tests/
+ 1873  cd tests/
+ 1874  ls
+ 1875  cat _how-to.txt 
+ 1876  ../ucblogo
+ 1877  ../ucblogo ./UnitTests.lg 
+ 1878  git diff
+ 1879  cd ..
+ 1880  grep gettimeofday *
+ 1881  vim configure
+ 1882  vim configure.ac 
+ 1883  autoreconf 
+ 1884  ./configure --PREFIX=/home/jeff
+ 1885  ./configure --prefix=/home/jeff
+ 1886  grep gettimeofday *
+ 1887  make
+ 1888  make -j8
+ 1889  make clean
+ 1890  make
+ 1891  make clean
+ 1892  time make -j8
+ 1893  grep gettimeofday *
+ 1894  vim config.h
+ 1895  git status
+ 1896  git diff
+ 1897  git stash save coms.c
+ 1898  grep R gettimeofday *
+ 1899  grep -I gettimeofday *
+ 1900  grep -i gettimeofday *
+ 1901  make -j8
+ 1902  ./ucblogo
+ 1903  make clean
+ 1904  ls
+ 1905  grep -ri gettimeofday
+ 1906  ./configure --prefix=/home/jeff
+ 1907  grep -ri gettimeofday
+ 1908  ./configure --prefix=/home/jeff
+ 1909  make -j8
+ 1910  grep GETTIMEOFDAY *
+ 1911  ls
+ 1912  vim config.h.in
+ 1913  vim config.h
+ 1914  config configure.a
+ 1915  config configure.ac
+ 1916  vim configure.ac
+ 1917  autoreconf
+ 1918  ./configure --prefix=/home/jeff
+ 1919  make -j8
+ 1920  ./ucblogo
+ 1921  git status
+ 1922  git diff
+ 1923  cat ~/.ssh/
+ 1924  ls ~/.ssh
+ 1925  cat ~/.ssh/id_rsa.pub 
+ 1926  ./ucblogo
+ 1927  locate github
+ 1928  locate github |grep recov
+ 1929  cd ~/Downloads/
+ 1930  ls -lt
+ 1931  ls -lt |reverse
+ 1932  ls -lt |head
+ 1933  ssh-keygen 
+ 1934  cd ../ucblogo-code
+ 1935  git remote
+ 1936  git remote -v
+ 1937  git remote rename origin upstream
+ 1938  cat ~/.ssh/id_ed25519.pub 
+ 1939  git remote add origin git@github.com:n1ywb-1/ucblogo-code.git
+ 1940  git status
+ 1941  git commit configure.ac 
+ 1942  git commit coms.c
+ 1943  git status
+ 1944  git push
+ 1945  git push origin
+ 1946  ./ucblogo
+ 1947  grep -i dispatch *
+ 1948  vim eval.c 
+ 1949  make install
+ 1950  rev
+ 1951  echo -?
+ 1952  echo --help
+ 1953  man echo
+ 1954  echo -e "foo\nbar" |rev
+ 1955  ifconfig
+ 1956  top
+ 1957  cd Documents/
+ 1958  ucblogo tools.logo lsys.logo
+ 1959  bg
+ 1960  vim kochcurve.logo 
+ 1961  vim dragon.logo 
+ 1962  ucblogo tools.logo lsys.logo dragon.logo 
+ 1963  bg
+ 1964  vim dragon.logo 
+ 1965  ucblogo tools.logo lsys.logo dragon.logo 
+ 1966  ucblogo tools.logo lsys.logo 
+ 1967  bg
+ 1968  env
+ 1969  env home
+ 1970  env --help
+ 1971  set
+ 1972  help set
+ 1973  help echo
+ 1974  wait
+ 1975  man wait
+ 1976  vim lsys.logo
+ 1977  ls *.logo
+ 1978  cat leaf.logo 
+ 1979  view leaf.logo
+ 1980  vim lsys.logo
+ 1981  du -hs leaf.logo 
+ 1982  vim tools.logo 
+ 1983  ucblogo tools.logo 
+ 1984  ucblogo tools.old.logo 
+ 1985  vim tools.old.logo 
+ 1986  ucblogo tools.old.logo 
+ 1987  pacmd list-sinks | grep name:
+ 1988  sudo pacmd list-sinks | grep name:
+ 1989  ps auxw |grep pulse
+ 1990  pactl 
+ 1991  pacat
+ 1992  pacat --help
+ 1993  ppacmd list-sinks | grep name:
+ 1994  sudo pacmd list-sinks | grep name:
+ 1995  top
+ 1996  git clone https://github.com/emscripten-core/emsdk.git
+ 1997  cd emsdk/
+ 1998  ./emsdk install latest
+ 1999  ./emsdk activate latest
+ 2000  source ./emsdk_env.sh
+ 2001  emcc
+ 2002  cd ..
+ 2003  cat .gitignore
+ 2004  echo emsdk >> .gitignore 
+ 2005  git status
+ 2006  ./configure --help
+ 2007  echo $CC
+ 2008  export CC=emcc
+ 2009  ./configure 
+ 2010  make
+ 2011  make clean
+ 2012  ./configure 
+ 2013  make 
+ 2014  export CC=emcc CPP=em++
+ 2015  ./configure --help
+ 2016  export CC=emcc
+ 2017  export CXX=em++
+ 2018  make clean
+ 2019  ./configure
+ 2020  make
+ 2021  grep gcc *
+ 2022  vim Makefile
+ 2023  make clean-alll
+ 2024  make clean-all
+ 2025  make cleanall
+ 2026  make --rules
+ 2027  make --help |grep rules
+ 2028  git status
+ 2029  dir
+ 2030  grep gcc *
+ 2031  CC=emcc CXX=em++ ./configure 
+ 2032  ;s
+ 2033  ls
+ 2034  vim Makefile.in 
+ 2035  vim Makefile.am
+ 2036  grep gcc *
+ 2037  vim config.log 
+ 2038  cat .gitignore 
+ 2039  git satus
+ 2040  git status
+ 2041  git log Makefile.am
+ 2042  vim Makefile.am
+ 2043* emconfigure ./configure -
+ 2044  emmake make
+ 2045  emmake which gcc
+ 2046  grep gcc *
+ 2047  cat config.status 
+ 2048  ls
+ 2049  grep gcc *
+ 2050  cat makefile.msys 
+ 2051  dir
+ 2052  grep gcc *
+ 2053  view config.log
+ 2054  ./configure --help
+ 2055  CC=emcc CXX=em++ ./configure 
+ 2056  make clean
+ 2057  dir
+ 2058  git status
+ 2059  node a.wasm
+ 2060  emcc a.wasm ucblogo.js
+ 2061  emcc a.wasm -o ucblogo.js
+ 2062  git --help
+ 2063  git --help checkout
+ 2064  git --help reset
+ 2065  git status
+ 2066  git reset --hard git clean -dfx
+ 2067  git clean -dfx
+ 2068  git status
+ 2069  emconfigure autoreconf install
+ 2070  git checkout
+ 2071  git reset
+ 2072  git reset --hard
+ 2073  autoreconf
+ 2074  autoreconf --install
+ 2075  autoreconf
+ 2076  emconfigure ./configure
+ 2077  grep gcc *
+ 2078  echo $CC
+ 2079  cd emsdk/
+ 2080  mkdir bin
+ 2081  cd bin
+ 2082  which emcc
+ 2083  ln -s /home/jeff/ucblogo-code/emsdk/upstream/emscripten/emcc gcc
+ 2084  ln -s /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++ g++
+ 2085  ln -s /home/jeff/ucblogo-code/emsdk/upstream/emscripten/emcc ld
+ 2086  emld
+ 2087  ld
+ 2088  pwd
+ 2089  export PATH=/home/jeff/ucblogo-code/emsdk/bin:$PATH
+ 2090  which gcc
+ 2091  cd ..
+ 2092  emconfigure ./configure
+ 2093  make clean
+ 2094  make 
+ 2095  emmake make
+ 2096  emconfigure ./configure
+ 2097  emmake make
+ 2098  gcc
+ 2099  which emcc
+ 2100  head /home/jeff/ucblogo-code/emsdk/upstream/emscripten/emcc
+ 2101  view /home/jeff/ucblogo-code/emsdk/upstream/emscripten/emcc
+ 2102  grep gcc *
+ 2103  git clean -dfx
+ 2104  ls
+ 2105  cd ..
+ 2106  git clone ucblogo-code/ ucblogo-code-em
+ 2107  cd ucblogo-code-em/
+ 2108  ls
+ 2109  git status
+ 2110  grep gcc *
+ 2111  dir
+ 2112  ls
+ 2113  autoreconf
+ 2114  autoreconf --install
+ 2115  which gcc
+ 2116  rm -rf /home/jeff/ucblogo-code/emsdk/bin
+ 2117  which gcc
+ 2118  emcc
+ 2119  grep gcc *
+ 2120  vim config
+ 2121  vim configure
+ 2122  emconfigure ./configure
+ 2123  grep gcc *
+ 2124  CC=emcc CXX=em++ emconfigure ./configure
+ 2125  grep gcc *
+ 2126  export CC=emcc
+ 2127  export CXX=em++
+ 2128  emconfigure ./configure
+ 2129  emconfigure --help
+ 2130  emconfigure CC=emcc CXX=em++ ./configure
+ 2131  emconfigure env
+ 2132  emconfigure echo \$CC
+ 2133  emconfigure echo $CC
+ 2134  emconfigure 'echo $CC'
+ 2135  emconfigure env |grep CC
+ 2136  emconfigure ./configure CC=emcc
+ 2137  grep AC_PROG_CC
+ 2138  grep AC_PROG_CC *
+ 2139  vim configure.ac
+ 2140  emconfigure ./configure
+ 2141  vim configure.ac
+ 2142  emconfigure ./configure --help
+ 2143  emconfigure ./configure  --enable-nographics
+ 2144  ./configure --help
+ 2145  emconfigure ./configure --disable-wx
+ 2146  grep gcc *
+ 2147  emmake make
+ 2148  ls -al
+ 2149  ls -al makehelp
+ 2150  head makehelp
+ 2151  view makehelp
+ 2152  emmake make
+ 2153  node makehelp
+ 2154  vim makehelp
+ 2155  emmake make
+ 2156  chmod a+x makehelp
+ 2157  emmake make
+ 2158  ls
+ 2159  grep HELPCON *
+ 2160  ls helpfiles/
+ 2161  grep HELPCON *
+ 2162  emconfigure ./configure --help
+ 2163  emconfigure ./configure --disable-docs -disable-wx
+ 2164  emmake make
+ 2165  ls
+ 2166  ls make*
+ 2167  view makehelp.c
+ 2168  make logo
+ 2169  make main
+ 2170  emmake make main
+ 2171  emmake parse
+ 2172  emmake parser
+ 2173  emmake parse.o
+ 2174  ls
+ 2175  emmake parse.js
+ 2176  emmake parse.c
+ 2177  view Makefile
+ 2178  emconfigure ./configure --disable-docs --disable-wx
+ 2179  emmake make
+ 2180  make distclean
+ 2181  git status
+ 2182  git diff
+ 2183  rm a.wasm 
+ 2184  rm makehelp.wasm 
+ 2185  git status
+ 2186  emconfigure ./configure --disable-docs --disable-wx
+ 2187  emmake make
+ 2188  grep makehelp *
+ 2189  git clean 
+ 2190  git clean -f
+ 2191  git clean -i
+ 2192  git clean -n
+ 2193  git clean -x
+ 2194  git help clean
+ 2195  git clena -fx
+ 2196  git clean -fx
+ 2197  git status
+ 2198  dir
+ 2199  ./configure
+ 2200  autoreconf --install
+ 2201  emconfigure ./configure --disable-docs --disable-wx
+ 2202  emmake make
+ 2203  make distclean
+ 2204  emconfigure ./configure --disable-docs --disable-wx
+ 2205  make distclean
+ 2206  emconfigure ./configure --disable-docs --disable-wx
+ 2207  emmake make
+ 2208  node makehelp
+ 2209  view makehelp.c
+ 2210  touch helpfiles/HELPCONTENTS
+ 2211  emmake make
+ 2212  node makehelp
+ 2213  ls helpfiles/HELPCONTENTS 
+ 2214  touch helpfiles/HELPCONTENTS
+ 2215  node makehelp
+ 2216  view makehelp
+ 2217  vim Makefile.
+ 2218  vim Makefile.in
+ 2219  vim Makefile.am
+ 2220  emconfigure ./configure --disable-docs --disable-wx
+ 2221  emmake make
+ 2222  vim Makefile.am
+ 2223  emmake make
+ 2224  code .
+ 2225  emmake make
+ 2226  gcc -C90
+ 2227  which gcc
+ 2228  gcc --version
+ 2229  ls emsk
+ 2230  ls emsdk
+ 2231  ls
+ 2232  gcc
+ 2233  ls /home/jeff/ucblogo-code/emsdk/bin/gcc
+ 2234  ls /home/jeff/ucblogo-code/emsdk/bin
+ 2235  ls /home/jeff/ucblogo-code/emsdk
+ 2236  echo $PATH
+ 2237  export PATH=/home/jeff/ucblogo-code/emsdk:/home/jeff/ucblogo-code/emsdk/upstream/emscripten:/home/jeff/.nvm/versions/node/v23.3.0/bin:/home/jeff/bin:/home/jeff/.cargo/bin:/home/jeff/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+ 2238  gcc
+ 2239  gcc --version
+ 2240  gcc -C90
+ 2241  gcc --C90
+ 2242  man gcc
+ 2243  gcc --c90
+ 2244  gcc -c90
+ 2245  gcc --help
+ 2246  gcc --std=c90
+ 2247  CFLAGS=--std=c990 emconfigure ./configure --disable-docs --disable-wx
+ 2248  emcc --std=c90
+ 2249  CFLAGS=--std=c90 emconfigure ./configure --disable-docs --disable-wx
+ 2250  emmake make
+ 2251  CFLAGS=--std=c89 emconfigure ./configure --disable-docs --disable-wx
+ 2252  emmake make
+ 2253  CFLAGS="--std=c89 --Wno-int-conversion" emconfigure ./configure --disable-docs --disable-wx
+ 2254  emcc -Wno-int-conversion
+ 2255  CFLAGS="--std=c89 --Wint-conversion" emconfigure ./configure --disable-docs --disable-wx
+ 2256  CFLAGS="--std=c90 --Wint-conversion" emconfigure ./configure --disable-docs --disable-wx
+ 2257  CFLAGS="std=c90 Wint-conversion" emconfigure ./configure --disable-docs --disable-wx
+ 2258  CFLAGS="-std=c90 -Wint-conversion" emconfigure ./configure --disable-docs --disable-wx
+ 2259  CFLAGS="-std=c90 -Wno-int-conversion" emconfigure ./configure --disable-docs --disable-wx
+ 2260  emmake make
+ 2261  ls
+ 2262  node ucblogo.wasm 
+ 2263  ls *.js
+ 2264  ls *.o
+ 2265  ls *.wasm
+ 2266* 
+ 2267  view ucblogo.js 
+ 2268  node ucblogo.j
+ 2269  node ucblogo.js
+ 2270  ls
+ 2271  ls logolib/
+ 2272* 
+ 2273  node ucblogo.js
+ 2274  node ucblogo.js --help
+ 2275  ucblogo --help
+ 2276  export LOGOLIB=logolib
+ 2277  node ucblogo.js 
+ 2278  grep logolib *
+ 2279  grep -i logolib *
+ 2280  node ucblogo.js 
+ 2281  history
+ 2282  history |grep embed
+ 2283  node ucblogo.wasm 
+ 2284  node ucblogo.js 
+ 2285  emcc *.o -o ucblogo.js --embed-file /usr/local/share/ucblogo/logolib
+ 2286  ls /usr/local/share/ucblogo/logolib
+ 2287  ls /usr/share/ucblogo/logolib
+ 2288  CFLAGS="-std=c90 -Wno-int-conversion" emconfigure ./configure --disable-docs --disable-wx --prefix=/
+ 2289  emmake make
+ 2290  make clean
+ 2291  emmake make
+ 2292  emcc *.o -o ucblogo.js --embed-file logolib
+ 2293  node ucblogo.js 
+ 2294  ./configure --help |less
+ 2295  CFLAGS="-std=c90 -Wno-int-conversion -g" emconfigure ./configure --disable-docs --disable-wx --prefix=/
+ 2296  emmake make
+ 2297  make clean
+ 2298  emmake make
+ 2299  node ucblogo.js 
+ 2300  view ucblogo.js:4336
+ 2301  view ucblogo.js+4336
+ 2302  view ucblogo.js +4336
+ 2303  emcc
+ 2304  emcc -v
+ 2305  cat >> hello.c
+ 2306  emcc hello.c 
+ 2307  ls
+ 2308  ls hello *
+ 2309  ls hello*
+ 2310  ls
+ 2311  node a.out.js
+ 2312  rm a.*
+ 2313  emmake make
+ 2314  make clean
+ 2315  emmake make
+ 2316  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   
+ 2317  node ucblogo.js 
+ 2318  man srandom
+ 2319  emmake make
+ 2320  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   
+ 2321  node ucblogo.js 
+ 2322  emmake make
+ 2323  man srandom
+ 2324  emmake make
+ 2325  view config.log
+ 2326  grep HAVE_SRANDOM *
+ 2327  make clean
+ 2328  emmake make clean
+ 2329  emmake make
+ 2330  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   
+ 2331  node ucblogo.js 
+ 2332  man srandom
+ 2333  emmake make
+ 2334  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   
+ 2335  node ucblogo.js 
+ 2336  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   
+ 2337  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file /usr/share/ucblogo/logolib
+ 2338  node ucblogo.js 
+ 2339  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file /usr/share/ucblogo/logolib
+ 2340  vim ucblogo.js
+ 2341  ./configure --help
+ 2342  CFLAGS="-std=c90 -Wno-int-conversion -g" emconfigure ./configure --disable-docs --disable-wx --prefix=/ --datarootdir=/logolib
+ 2343  make clean
+ 2344  make
+ 2345  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib
+ 2346  node ucblogo.js 
+ 2347  ./configure --help
+ 2348  CFLAGS="-std=c90 -Wno-int-conversion -g" emconfigure ./configure --disable-docs --disable-wx --prefix=/ --datadir=/logolib
+ 2349  make clean ;emmake make -j8
+ 2350  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib
+ 2351  node ucblogo.js 
+ 2352  grep ucblogo/logolib *
+ 2353  ls
+ 2354  view usermanual 
+ 2355  cat pre.js
+ 2356  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib --pre-js pre.js
+ 2357  node ucblogo.js 
+ 2358  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.js ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib --pre-js pre.js
+ 2359  node ucblogo.js 
+ 2360  git status
+ 2361  grep WASM *
+ 2362  grep EMS *
+ 2363  grep EMCC *
+ 2364  grep emcc *
+ 2365  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.html ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib --pre-js pre.js
+ 2366  xdg-open ucblogo.html 
+ 2367  python -m http
+ 2368  python3 -m httpd
+ 2369  python3 -m http_server
+ 2370  python3 -m http
+ 2371  python3 -m http.server 8080
+ 2372  history
+ 2373  history > embuild.log
+ 2374  git diff
+ 2375  node ucblogo.js -- tests/UnitTests.lg 
+ 2376  ls tests
+ 2377  cd tests/
+ 2378  cat UnitTests.lg 
+ 2379  node ucblogo.js -- tests/UnitTests.lg - RunAndExit
+ 2380  cd ..
+ 2381  node ucblogo.js -- tests/UnitTests.lg - RunAndExit
+ 2382  node ucblogo.js tests/UnitTests.lg - RunAndExit |head
+ 2383  node ucblogo.js tests/UnitTests.lg - RunAndExit
+ 2384  node ucblogo.js tests/UnitTests.lg - RunAndExit |head
+ 2385  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.html ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib --pre-js pre.js --embed-file tests
+ 2386  node ucblogo.js tests/UnitTests.lg - RunAndExit |head
+ 2387  ls tests
+ 2388  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.html ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib --pre-js pre.js --embed-file tests
+ 2389  node ucblogo.js tests/UnitTests.lg - RunAndExit |head
+ 2390  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo.html ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o  ucblogo-nographics.o   --embed-file logolib --pre-js pre.js --embed-file tests
+ 2391  node ucblogo.js tests/UnitTests.lg - RunAndExit |head
+ 2392  node ucblogo.js tests/UnitTests.lg - -x
+ 2393  python3 -m http.server 8080
+ 2394  CFLAGS="-std=c90 -Wno-int-conversion -g" emconfigure ./configure --disable-docs --enable-x11 --disable-wx --prefix=/ --datadir=/logolib
+ 2395  make clean
+ 2396  emmake make -j8
+ 2397  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -lx
+ 2398  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -lX
+ 2399  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -lx11
+ 2400  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -llibx
+ 2401  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -lX11
+ 2402  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable -o ucblogo -lX11 ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o 
+ 2403  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -llibx
+ 2404  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -lX
+ 2405  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -llibx
+ 2406  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o -lX11
+ 2407  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable -lX11   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o 
+ 2408  git help branch
+ 2409  git branch wasm
+ 2410  /home/jeff/ucblogo-code/emsdk/upstream/emscripten/em++  -g -O2 -Wno-write-strings -Wno-unused-variable -lX11   -o ucblogo ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o ucblogo-parse.o ucblogo-print.o ucblogo-wrksp.o   ucblogo-term.o ucblogo-xgraphics.o  -error-limit=0
+ 2411  grep X *.c
+ 2412  egrep 'X[A-Z] *.c
+ 2413  egrep 'X[A-Z]' *.c
+ 2414  egrep 'X[A-Z][a-z]' *.c
+ 2415  git status
+ 2416  history > embuild.log 
