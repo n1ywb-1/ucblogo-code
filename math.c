@@ -161,13 +161,6 @@ void math_init() {
     signal(SIGFPE, handle_oflo);
 }
 
-#ifdef HAVE_MATHERR
-int matherr(struct exception *x) {
-    if (x->type == UNDERFLOW) return(1);
-    longjmp(oflo_buf,1);
-}
-#endif
-
 #ifdef mac
 FLONUM degrad = 0.017453292520;
 #else
