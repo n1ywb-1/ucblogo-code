@@ -42,6 +42,11 @@
 void getExecutableDir(char * path, int maxlen);
 #endif
 
+#ifdef HAVE_SRANDOM
+// #include <stdlib.h>
+extern void srandom(int);
+#endif
+
 typedef struct priminfo {
     char *name;
     short minargs;
@@ -527,9 +532,9 @@ void init(void) {
     oldyoungs = Unbound = newnode(PUNBOUND);
 
 #ifdef HAVE_SRANDOM
-    srandom((int)time((time_t *)NULL));
+    (void)srandom(time(NULL));
 #else
-    srand((int)time((time_t *)NULL));
+    rand((int)time((time_t *)NULL));
 #endif
 #ifdef ecma
     for (i=0; i<128; i++)

@@ -108,9 +108,9 @@ void termcap_getter(char *cap, char *buf) {
     char *temp_ptr = temp;
 
     termcap_ptr = buf;
-    str=tgetstr(cap,&temp_ptr);
+    // str=tgetstr(cap,&temp_ptr);
     /* if (str == NULL) str = temp; */
-    tputs(str,1,termcap_putter);
+    // tputs(str,1,termcap_putter);
 }
 #endif
 
@@ -144,10 +144,10 @@ void term_init(void) {
 	tty_cbreak.c_cc[VTIME] = '\0';
 	tty_cbreak.c_lflag &= ~(ECHO|ICANON);
 #else
-	ioctl(0,TIOCGETP,(char *)(&tty_cooked));
-	tty_cbreak = tty_cooked;
-	tty_cbreak.sg_flags |= CBREAK;
-	tty_cbreak.sg_flags &= ~ECHO;
+	// ioctl(0,TIOCGETP,(char *)(&tty_cooked));
+	// tty_cbreak = tty_cooked;
+	// tty_cbreak.sg_flags |= CBREAK;
+	// tty_cbreak.sg_flags &= ~ECHO;
 #endif
     }
     tty_charmode = 0;
@@ -157,23 +157,24 @@ void term_init(void) {
      * are preinitialized to 0 */
 
     /* query terminal information from termcap database, if available */
-    tgetent_result = tgetent(bp, getenv("TERM"));
+    // tgetent_result = tgetent(bp, getenv("TERM"));
+    tgetent_result = 0;
     if (tgetent_result == 1) {
-      x_max = tgetnum("co");
-      y_max = tgetnum("li");
+    //   x_max = tgetnum("co");
+    //   y_max = tgetnum("li");
 
-      term_sg = tgetnum("sg");
+    //   term_sg = tgetnum("sg");
 
       x_coord = y_coord = 0;
-      termcap_getter("cm", cm_arr);
-      termcap_getter("cl", cl_arr);
+    //   termcap_getter("cm", cm_arr);
+    //   termcap_getter("cl", cl_arr);
 
-      if (term_sg <= 0) {
-          termcap_getter("so", so_arr);
-          termcap_getter("se", se_arr);
-      } else { /* no standout modes */
-	so_arr[0] = se_arr[0] = '\0';
-      }
+    //   if (term_sg <= 0) {
+        //   termcap_getter("so", so_arr);
+        //   termcap_getter("se", se_arr);
+    //   } else { /* no standout modes */
+	// so_arr[0] = se_arr[0] = '\0';
+    //   }
     }
     
     /* emacs detection */
@@ -203,7 +204,7 @@ void charmode_on() {
 #ifdef HAVE_TERMIO_H
 	ioctl(0,TCSETA,(char *)(&tty_cbreak));
 #else /* !HAVE_TERMIO_H */
-	ioctl(0,TIOCSETP,(char *)(&tty_cbreak));
+	// ioctl(0,TIOCSETP,(char *)(&tty_cbreak));
 #endif /* HAVE_TERMIO_H */
 	tty_charmode++;
     }
@@ -219,7 +220,7 @@ void charmode_off() {
 #ifdef HAVE_TERMIO_H
 	ioctl(0,TCSETA,(char *)(&tty_cooked));
 #else /* !HAVE_TERMIO_H */
-	ioctl(0,TIOCSETP,(char *)(&tty_cooked));
+	// ioctl(0,TIOCSETP,(char *)(&tty_cooked));
 #endif /* HAVE_TERMIO_H */
 	tty_charmode = 0;
     }
@@ -243,7 +244,7 @@ NODE *lcleartext(NODE *args) {
 #endif /* WIN32 || !Win32 */
 #else /* !ibm */
     printf("%s", cl_arr);
-    printf("%s", tgoto(cm_arr, x_margin, y_margin));
+    // printf("%s", tgoto(cm_arr, x_margin, y_margin));
 #endif /* ibm */
 #endif /* mac */
 
@@ -301,7 +302,7 @@ NODE *lsetcursor(NODE *args) {
 #ifdef ibm
 	ibm_gotoxy(x_coord, y_coord);
 #else
-	printf("%s", tgoto(cm_arr, x_coord, y_coord));
+	// printf("%s", tgoto(cm_arr, x_coord, y_coord));
 #endif
 #endif
 	fflush(stdout);
