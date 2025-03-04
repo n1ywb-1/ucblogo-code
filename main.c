@@ -61,6 +61,11 @@ jmp_buf iblk_buf;
 #include <console.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+// emscripten wasm stuff goes here
+#include <emscripten.h>
+#endif
+
 NODE *current_line = NIL;
 NODE **bottom_stack; /*GC*/
 NODE *command_line = NIL;   /* 6.0 command line args after files */
@@ -340,7 +345,13 @@ int main(int argc, char *argv[]) {
     for (;;) {
 	if (NOT_THROWING) {
 	    check_reserve_tank();
+#ifdef __EMSCRIPTEN__
+		emscripten_sleep(0);
+#endif
 	    current_line = reader(stdin,"? ");
+#ifdef __EMSCRIPTEN__
+		emscripten_sleep(0);
+#endif
 #ifdef __RZTC__
 		(void)feof(stdin);
 		if (!in_graphics_mode)
@@ -357,7 +368,13 @@ int main(int argc, char *argv[]) {
 #endif
 	    if (NOT_THROWING) {
 		exec_list = parser(current_line, TRUE);
+#ifdef __EMSCRIPTEN__
+		emscripten_sleep(0);
+#endif
 		if (exec_list != NIL) eval_driver(exec_list);
+#ifdef __EMSCRIPTEN__
+		emscripten_sleep(0);
+#endif
 	    }
 	}
 #ifdef HAVE_WX
@@ -382,6 +399,9 @@ int main(int argc, char *argv[]) {
 	}
     }
     //prepare_to_exit(TRUE);
+#ifdef __EMSCRIPTEN__
+		emscripten_sleep(0);
+#endif
 #ifndef HAVE_WX
     exit(0);
 #endif
