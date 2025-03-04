@@ -25,6 +25,10 @@
 #include "globals.h"
 #include <stdarg.h>
 
+#ifdef __EMSCRIPTEN__
+#include "emscripten.h"
+#endif
+
 int print_stringlen;
 char *print_stringptr;
 int force_printwidth = -1, force_printdepth = -1;
@@ -145,6 +149,9 @@ void print_char(FILE *strm, char ch) {
 	if (--print_stringlen > 0)
 	    *print_stringptr++ = ch;
     }
+#ifdef __EMSCRIPTEN__
+		emscripten_sleep(0);
+#endif
 }
 
 void print_space(FILE *strm) {
