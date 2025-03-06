@@ -399,9 +399,6 @@ int main(int argc, char *argv[]) {
 	}
     }
     //prepare_to_exit(TRUE);
-#ifdef __EMSCRIPTEN__
-		emscripten_sleep(0);
-#endif
 #ifndef HAVE_WX
     exit(0);
 #endif

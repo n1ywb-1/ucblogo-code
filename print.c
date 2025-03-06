@@ -149,9 +149,12 @@ void print_char(FILE *strm, char ch) {
 	if (--print_stringlen > 0)
 	    *print_stringptr++ = ch;
     }
-#ifdef __EMSCRIPTEN__
-		emscripten_sleep(0);
-#endif
+// WASM note: with JSPI this errors with
+//   Uncaught (in promise) SuspendError: trying to suspend JS frames
+//  This might be part of why Asyncify was crashing
+// #ifdef __EMSCRIPTEN__
+// 		emscripten_sleep(0);
+// #endif
 }
 
 void print_space(FILE *strm) {
