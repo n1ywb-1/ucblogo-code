@@ -877,9 +877,7 @@ nosugar:
 #endif
 
 /*  Uncomment these to print debugging messages right away! */
-/*
     setvalnode__caseobj(Redefp, True);
     setflag__caseobj(Redefp, VAL_BURIED);
- */
 }
 

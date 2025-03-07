@@ -58,11 +58,11 @@ NODE
    make "redefp "true
    to get lots of output after defining DEBUGGING 1
 */
-#define DEBUGGING 0
+#define DEBUGGING 1
 
 #if DEBUGGING
-#define DEB_STACK 0	    /* set to 1 to log save/restore */
-#define DEB_CONT 0	    /* set to 1 to log newcont/fetch_cont */
+#define DEB_STACK 1	    /* set to 1 to log save/restore */
+#define DEB_CONT 1	    /* set to 1 to log newcont/fetch_cont */
 
 #define do_debug(x) \
     x(expresn) x(unev) x(val) x(didnt_get_output) x(didnt_output_name) x(fun) \
@@ -123,23 +123,23 @@ void debprintline(int line, char *name) {
 
 #if DEB_STACK
 NODE *restname, *restline;
-#define save(register) (    debprint2("saving " #register " = %s ", register), \
-			    push(register, stack), \
-			    push(make_intnode(__LINE__), stack), \
-			    debprint2(" at line %s\n", car(stack)), \
-			    push(make_static_strnode(#register), stack) )
-#define restore(register) ( restname = car(stack), pop(stack), \
-			    restline = car(stack), pop(stack), \
-			    register = car(stack), pop(stack), \
-			    ( (strcmp(getstrptr(restname), #register)) ? (\
-				debprint2("*** Restoring " #register " but saved %s",\
-					 restname), \
-				debprint2(" at line %s! ***\n", restline) \
-			    ) : 0), \
-			    debprint2("restoring " #register " = %s ", register), \
-			    debprint2(" at line %s\n", make_intnode(__LINE__)) )
-#define save2(reg1,reg2) (  save(reg1), save(reg2)  )
-#define restore2(reg1,reg2) ( restore(reg2), restore(reg1) )
+#define save(register) { debprint2("saving " #register " = %s ", register); \
+			    push(register, stack); \
+			    push(make_intnode(__LINE__), stack); \
+			    debprint2(" at line %s\n", car(stack)); \
+			    push(make_static_strnode(#register), stack); }
+#define restore(register) { restname = car(stack); pop(stack); \
+			    restline = car(stack); pop(stack); \
+			    register = car(stack); pop(stack); \
+			    if (strcmp(getstrptr(restname), #register)) { \
+					debprint2("*** Restoring " #register " but saved %s",\
+						restname);  \
+					debprint2(" at line %s! ***\n", restline); \
+				} \
+			    debprint2("restoring " #register " = %s ", register); \
+			    debprint2(" at line %s\n", make_intnode(__LINE__)); } 
+#define save2(reg1,reg2) {  save(reg1); save(reg2)  }
+#define restore2(reg1,reg2) { restore(reg2); restore(reg1) }
 #else
 #define save(register)	    push(register, stack)
 #define restore(register)   (register = car(stack), pop(stack))
@@ -346,6 +346,8 @@ NODE *val_eval_driver(NODE *seq) {
  * begin at.  Return value depends on where.
  */ 
 NODE *evaluator(NODE *list, enum labels where) {
+	printf("evaluator\n");
+	debprint("inside_evaluator++");
 
     FIXNUM  cont   = 0;	    /* where to go next */
     int i;
@@ -356,6 +358,9 @@ NODE *evaluator(NODE *list, enum labels where) {
     var = var_stack;
     newcont(all_done);
     newcont(where);
+
+	debprint("inside_evaluator++");
+
     goto fetch_cont;
 
 all_done:
@@ -366,9 +371,11 @@ all_done:
         dont_fix_ift = 0;
     }
 inside_evaluator--;
+	debprint("inside_evaluator--");
 return(val);
 
 begin_line:
+    debprint("begin_line");
     this_line = list;
     val_status = NO_VALUE_OK;
     newcont(end_line);

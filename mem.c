@@ -17,6 +17,7 @@
  *      along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma optimize(off)
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -43,7 +44,7 @@ extern NODE *stack, *numstack, *expresn, *val, *parm, *catch_tag, *arg;
 #ifdef __RZTC__
 #define GCMAX 3000
 #else
-#define GCMAX 16000
+#define GCMAX 1600000
 
 #endif
 #endif
@@ -52,12 +53,12 @@ extern NODE *stack, *numstack, *expresn, *val, *parm, *catch_tag, *arg;
 #ifdef THINK_C
 extern NODE *gcstack[];
 #else
-NODE *gcstack[GCMAX];
+volatile NODE *gcstack[GCMAX];
 #endif
 
-NODE **mark_gcstack = gcstack;
-NODE **gctop = gcstack;
-NODE **gcbottom = gcstack;
+volatile NODE **mark_gcstack = gcstack;
+volatile NODE **gctop = gcstack;
+volatile NODE **gcbottom = gcstack;
 
 long int mem_nodes = 0, mem_max = 0;	/* for Logo NODES primitive */
 
@@ -108,8 +109,8 @@ int next_gen_gc = 0, max_gen = 0;
 
 int mark_gen_gc;
 
-#if 0
 #define GC_DEBUG 1 /* */
+#if 0
 #define GC_TWOBYTE 1 /* Use 2-byte stack offset in mark phase */
 #endif
 
@@ -129,6 +130,9 @@ BOOLEAN addseg(void) {
     long int p;
     struct segment *newseg;
 
+#ifdef GC_DEBUG
+    fprintf(DEBUGSTREAM, "addseg\n"); fflush(DEBUGSTREAM);
+#endif
     if ((newseg = (struct segment *)malloc(sizeof(struct segment)
 					   + seg_size*sizeof(struct logo_node)))
             != NULL) {
@@ -164,7 +168,7 @@ BOOLEAN addseg(void) {
 #define VALID_PTR(x)    (valid_pointer(x))
 #endif
 
-BOOLEAN valid_pointer (volatile NODE *ptr_val) {
+BOOLEAN __attribute__ ((noinline)) valid_pointer (volatile NODE *ptr_val) {
     struct segment* current_seg;
     unsigned long int ptr = (unsigned long int)ptr_val;
     FIXNUM size;
@@ -189,7 +193,7 @@ BOOLEAN valid_pointer (volatile NODE *ptr_val) {
 /* #pragma optimize("",on) */
 #endif
 
-NODETYPES nodetype(NODE *nd) {
+NODETYPES nodetype(volatile NODE *nd) {
     if (nd == NIL) return (PNIL);
     return(nd->node_type);
 }
@@ -268,7 +272,7 @@ void setcdr(NODE *nd, NODE *newcdr) {
 
 
 
-void do_gc(BOOLEAN full) {
+void __attribute__ ((noinline)) do_gc(BOOLEAN full) {
 #if 1
     jmp_buf env;
     setjmp(env);
@@ -392,7 +396,7 @@ NODE **inter_gen_mark (NODE **prev) {
 }
 
 void gc_inc () {
-    NODE **new_gcstack;
+    volatile NODE **new_gcstack;
     long int loop;
 
     if (gc_overflow_flag == 1) return;
@@ -405,7 +409,7 @@ void gc_inc () {
 #ifdef GC_DEBUG
 	fprintf(DEBUGSTREAM,"\nAllocating new GC stack\n"); fflush(DEBUGSTREAM);
 #endif
-	if ((new_gcstack = (NODE**) malloc ((size_t) sizeof(NODE *) *
+	if ((new_gcstack = (volatile NODE**) malloc ((size_t) sizeof(NODE *) *
 				(gc_stack_size + GCMAX))) == NULL) {
 
 	    /* no room to increse GC Stack */
@@ -440,7 +444,7 @@ void gc_inc () {
 }
 
 /* Iterative mark procedure */
-void mark(NODE* nd) {
+void __attribute__ ((noinline)) mark(volatile NODE* nd) {
     int loop;
     NODE** array_ptr;
 
@@ -513,7 +517,7 @@ no_mark:
     }
 }
 
-void gc(BOOLEAN no_error) {
+void __attribute__ ((noinline)) gc(BOOLEAN no_error) {
     NODE *top;
     NODE **top_stack;
     NODE *nd, *tmpnd;
@@ -551,6 +555,11 @@ void gc(BOOLEAN no_error) {
 	/* Every caseobj must be marked twice to count */
 	for (loop = 0; loop < HASH_LEN ; loop++) {
 	    for (nd = hash_table[loop]; nd != NIL; nd = cdr(nd)) {
+		if (!valid_pointer(nd)) { printf("BARF\n") ;exit(-1); }
+		if (!valid_pointer(car(nd))) { printf("BARF2\n") ;exit(-1); }
+		if (!valid_pointer(cddr(car(nd)))) { printf("BARF3\n") ;exit(-1); }
+		if (!valid_pointer(cddr(cddr(car(nd))))) { printf("BARF4\n") ;exit(-1); }
+		if (!valid_pointer(cdr(cddr(cddr(car(nd)))))) { printf("BARF5\n") ;exit(-1); }
 		tmpnd = caselist__object(car(nd));
 		while (tmpnd != NIL) {
 		    (car(tmpnd))->mark_gc = -1;
@@ -928,3 +937,4 @@ void use_reserve_tank(void) {
 void check_reserve_tank(void) {
     if (reserve_tank == NIL) fill_reserve_tank();
 }
+#pragma optimize(on)

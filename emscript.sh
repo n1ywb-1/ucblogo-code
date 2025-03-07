@@ -3,8 +3,8 @@
 # wasm mdarray unit test crashes with OOB error with -O > 0
 # Future: use -mtail-call (is the interpreter even recursive?)
 
-export CFLAGS="-std=c90 -Wno-int-conversion -O0 -g"
-export CXXFLAGS="-O0 -g"
+export CFLAGS="-std=c90 -Wno-int-conversion -O1 -g"
+export CXXFLAGS="-O1 -g"
 
 emconfigure ./configure --disable-docs --disable-x11 --disable-wx --prefix=/ --datadir=/logolib --enable-wasm 
 
@@ -14,7 +14,7 @@ make clean && emmake make -j9
 # I assume this is required due to an incomplete integration between emscripten
 # and autotools
 
-em++ -O0 -gsource-map -Wno-write-strings -Wno-unused-variable -o ucblogo.html \
+em++ -O1 -gsource-map -Wno-write-strings -Wno-unused-variable -o ucblogo.html \
 ucblogo-coms.o ucblogo-error.o ucblogo-eval.o ucblogo-files.o ucblogo-graphics.o \
 ucblogo-init.o ucblogo-intern.o ucblogo-libloc.o ucblogo-lists.o \
 ucblogo-logodata.o ucblogo-main.o ucblogo-math.o ucblogo-mem.o ucblogo-paren.o \
@@ -53,4 +53,4 @@ ucblogo-nographics.o \
 # python3 -m http.server 8080 & xdg-open http://0.0.0.0:8080/ucblogo.html
 
 # Or use node; it uses the same V8 engine as chrome
-node --experimental-wasm-stack-switching  ./ucblogo.js tests/test.lg
+#node --experimental-wasm-stack-switching  ./ucblogo.js tests/test.lg

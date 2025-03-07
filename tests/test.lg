@@ -1,4 +1,14 @@
+make "redefp "true
+make "printdepthlimit 10
+make "printwidthlimit 80
+gc
+; (pr "redefp :redefp)
 load "tests/UnitTests.lg
-runall
+; runall
+load "tests/UnitTests-MemMgr.lg
+catch "ERROR [
+(pr "Tests.MemMgr.LongList Tests.MemMgr.LongList)
+]
+(pr "ERROR: ERROR)
+pr "BYE
 bye
-
