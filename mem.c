@@ -52,12 +52,12 @@ extern NODE *stack, *numstack, *expresn, *val, *parm, *catch_tag, *arg;
 #ifdef THINK_C
 extern NODE *gcstack[];
 #else
-NODE *gcstack[GCMAX];
+volatile NODE *gcstack[GCMAX];
 #endif
 
-NODE **mark_gcstack = gcstack;
-NODE **gctop = gcstack;
-NODE **gcbottom = gcstack;
+volatile NODE **mark_gcstack = gcstack;
+volatile NODE **gctop = gcstack;
+volatile NODE **gcbottom = gcstack;
 
 long int mem_nodes = 0, mem_max = 0;	/* for Logo NODES primitive */
 
@@ -440,7 +440,7 @@ void gc_inc () {
 }
 
 /* Iterative mark procedure */
-void mark(NODE* nd) {
+void mark(volatile NODE* nd) {
     int loop;
     NODE** array_ptr;
 
@@ -551,6 +551,12 @@ void gc(BOOLEAN no_error) {
 	/* Every caseobj must be marked twice to count */
 	for (loop = 0; loop < HASH_LEN ; loop++) {
 	    for (nd = hash_table[loop]; nd != NIL; nd = cdr(nd)) {
+			if (!valid_pointer(nd)) { printf("BARF\n") ;exit(-1); }
+			if (!valid_pointer(car(nd))) { printf("BARF2\n") ;exit(-1); }
+			if (!valid_pointer(cddr(car(nd)))) { printf("BARF3\n") ;exit(-1); }
+			if (!valid_pointer(cddr(cddr(car(nd))))) { printf("BARF4\n") ;exit(-1); }
+			if (!valid_pointer(cdr(cddr(cddr(car(nd)))))) { printf("BARF5\n") ;exit(-1); }
+	
 		tmpnd = caselist__object(car(nd));
 		while (tmpnd != NIL) {
 		    (car(tmpnd))->mark_gc = -1;

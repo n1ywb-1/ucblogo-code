@@ -134,7 +134,7 @@ typedef enum {wrapmode, fencemode, windowmode} mode_type;
 #ifdef THINK_C
 #define SEG_SIZE	4000
 #else
-#define SEG_SIZE        16000 /* Should be a fairly big number for optimal GC
+#define SEG_SIZE        16 /* Should be a fairly big number for optimal GC
                                  Performance */
 #endif
 #endif

@@ -109,7 +109,7 @@ extern void setcar(NODE *, NODE *);
 extern void setcdr(NODE *, NODE *);
 extern NODE *newnode(NODETYPES);
 extern NODE *cons(NODE *, NODE *);
-extern void mark(NODE *);
+extern void mark(volatile NODE *);
 extern void gc(BOOLEAN);
 extern NODE *lgc(NODE *);
 extern NODE *lnodes(NODE *);
