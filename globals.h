@@ -597,8 +597,6 @@ extern int clearing_screen;
 #endif
 
 #ifdef WIN32
-/* Win32trm.c */
-
 #undef WIN32_DEBUG
 
 #undef CONSOLE
