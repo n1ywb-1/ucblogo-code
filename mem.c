@@ -142,11 +142,6 @@ BOOLEAN addseg(void) {
   	return 0;
 }
 
-#ifdef WIN32
-#pragma optimize("",off)
-#endif
-/* Think C tries to load ptr_val->node_type early if optimized */
-
 #define NILP(x)         (NIL == (x))
 
 /* GC_OPT seems to work, but valid_pointer might be needed */
@@ -175,10 +170,6 @@ BOOLEAN valid_pointer ( NODE *ptr_val) {
     }
     return 0;
 }
-
-#ifdef WIN32
-/* #pragma optimize("",on) */
-#endif
 
 NODETYPES nodetype(NODE *nd) {
     if (nd == NIL) return (PNIL);
@@ -250,12 +241,6 @@ void setcdr(NODE *nd, NODE *newcdr) {
     check_valid_oldyoung(nd, newcdr);
 }
 
-#ifdef WIN32
-#pragma optimize("",off)
-#endif
-
-
-
 void do_gc(BOOLEAN full) {
 #if 1
     jmp_buf env;
@@ -302,10 +287,6 @@ NODE *newnode(NODETYPES type) {
 	return(newnd);
     } else return &phony;
 }
-
-#ifdef WIN32
-/* #pragma optimize("",on) */
-#endif
 
 NODE *cons(NODE *x, NODE *y) {
     NODE *val = newnode(CONS);
