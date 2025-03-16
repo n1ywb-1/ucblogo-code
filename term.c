@@ -29,7 +29,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef HAVE_TERMIOS_H
+#if defined(HAVE_TERMIOS_H)
 #include <termios.h>
 #elif defined(HAVE_TERMIO_H)
 #include <termio.h>
@@ -44,9 +44,6 @@
 
 #ifdef HAVE_TERMCAP_H
 #include <termcap.h>
-#ifdef HAVE_SGTTY_H
-#include <sgtty.h>
-#endif
 #else
 #ifdef HAVE_TERMLIB_H
 #include <termlib.h>
@@ -75,15 +72,7 @@ char cm_arr[40];
 char so_arr[40];
 char se_arr[40];
 
-#if defined(HAVE_TERMIOS_H)
-struct termios tty_cooked, tty_cbreak;
-#elif defined(HAVE_TERMIO_H)
 struct termio tty_cooked, tty_cbreak;
-#else
-#ifdef HAVE_SGTTY_H
-struct sgttyb tty_cooked, tty_cbreak;
-#endif
-#endif
 
 int interactive, tty_charmode;
 
@@ -116,24 +105,11 @@ void term_init(void) {
     interactive = isatty(0);
 
     if (interactive) {
-#if defined(HAVE_TERMIOS_H)
-	tcgetattr(0, &tty_cooked);
-	tty_cbreak = tty_cooked;
-	tty_cbreak.c_cc[VMIN] = '\01';
-	tty_cbreak.c_cc[VTIME] = '\0';
-	tty_cbreak.c_lflag &= ~(ECHO|ICANON);
-#elif defined(HAVE_TERMIO_H)
 	ioctl(0,TCGETA,(char *)(&tty_cooked));
 	tty_cbreak = tty_cooked;
 	tty_cbreak.c_cc[VMIN] = '\01';
 	tty_cbreak.c_cc[VTIME] = '\0';
 	tty_cbreak.c_lflag &= ~(ECHO|ICANON);
-#else
-	ioctl(0,TIOCGETP,(char *)(&tty_cooked));
-	tty_cbreak = tty_cooked;
-	tty_cbreak.sg_flags |= CBREAK;
-	tty_cbreak.sg_flags &= ~ECHO;
-#endif
     }
     tty_charmode = 0;
 
@@ -181,26 +157,14 @@ void term_init(void) {
 
 void charmode_on() {
     if ((readstream == stdin) && interactive && !tty_charmode) {
-#if defined(HAVE_TERMIOS_H)
-	tcsetattr(0, TCSANOW, &tty_cbreak);
-#elif defined(HAVE_TERMIO_H)
 	ioctl(0,TCSETA,(char *)(&tty_cbreak));
-#else /* !HAVE_TERMIO_H */
-	ioctl(0,TIOCSETP,(char *)(&tty_cbreak));
-#endif /* HAVE_TERMIO_H */
 	tty_charmode++;
     }
 }
 
 void charmode_off() {
     if (tty_charmode) {
-#if defined(HAVE_TERMIOS_H)
-	tcsetattr(0, TCSANOW, &tty_cooked);
-#elif defined(HAVE_TERMIO_H)
 	ioctl(0,TCSETA,(char *)(&tty_cooked));
-#else /* !HAVE_TERMIO_H */
-	ioctl(0,TIOCSETP,(char *)(&tty_cooked));
-#endif /* HAVE_TERMIO_H */
 	tty_charmode = 0;
     }
 }
