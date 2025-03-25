@@ -35,7 +35,10 @@ git.c
 logo_win.res
 .vscode/browse.*
 .*
-*~
 *.swp
-
-
+*~
+*.wasm
+*.map
+ucblogo.html
+ucblogo.js
+ucblogo.mjs
