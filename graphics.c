@@ -153,7 +153,13 @@ void draw_turtle(void) {
     return;
 #endif
 
-    if (!turtle_shown) {
+#ifdef __EMSCRIPTEN__
+	web_draw_turtle(turtle_heading);
+	return;
+#endif
+
+	if (!turtle_shown)
+	{
 		if (!graphics_setup) {
 			graphics_setup++;
                         turtle_shown = TRUE;
@@ -161,7 +167,7 @@ void draw_turtle(void) {
 		return;
 	}
 
-    drawing_turtle = 1;
+	drawing_turtle = 1;
     turtle_shown = 0;
 /*
     get_palette(pen_color, &r, &g, &b);
