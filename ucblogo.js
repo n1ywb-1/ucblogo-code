@@ -34,13 +34,342 @@ if (ENVIRONMENT_IS_NODE) {
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 // include: pre.js
+const SVG = 'http://www.w3.org/2000/svg';
+
+Module.graphics = {};
+
+Module.graphics.logoColors = [
+{r: 0, g: 0, b: 0},
+{r: 0, g: 0, b: 99.6108949416342},
+{r: 0, g: 99.6108949416342, b: 0},
+{r: 0, g: 99.6108949416342, b: 99.6108949416342},
+{r: 99.6108949416342, g: 0, b: 0},
+{r: 99.6108949416342, g: 0, b: 99.6108949416342},
+{r: 99.6108949416342, g: 99.6108949416342, b: 0},
+{r: 99.6108949416342, g: 99.6108949416342, b: 99.6108949416342},
+{r: 60.5477988860914, g: 37.5005722133211, b: 23.0472266727703},
+{r: 76.9542992294194, g: 53.1258106355383, b: 7.03135728999771},
+{r: 39.0630960555428, g: 63.2822156099794, b: 25.0003814755474},
+{r: 46.8757152666514, g: 73.0479896238651, b: 73.0479896238651},
+{r: 99.6108949416342, g: 58.2040131227588, b: 46.485084306096},
+{r: 56.2508583199817, g: 44.1412985427634, b: 81.2512397955291},
+{r: 99.6108949416342, g: 63.6728465705348, b: 0},
+{r: 71.4854657816434, g: 71.4854657816434, b: 71.4854657816434},
+];
+
 Module.preRun = () => {
     const PREFIX = "/share/ucblogo";
-    ENV.LOGOLIB = PREFIX+"/logolib";
-    ENV.LOGOHELP = PREFIX+"/helpfiles";
-    ENV.CSLS = PREFIX+"/csls";
+    ENV.LOGOLIB = PREFIX + "/logolib";
+    ENV.LOGOHELP = PREFIX + "/helpfiles";
+    ENV.CSLS = PREFIX + "/csls";
 };
-Module.env = {};// end include: pre.js
+Module.env = {};
+Module.graphics.pen_info = {
+    x: 320,
+    y: 240,
+    sz: 1,
+    c: 0,
+    fntsz: 12,
+    mode: 'normal',
+};
+Module.graphics.graphics_init = () => {
+    const g = Module.graphics;
+    console.log("graphics_init");
+    g.clear_screen();
+    g.masknum = 0;
+    const ld = document.getElementById('logoDrawing');
+    ld.addEventListener('mousemove', (evt) => {
+        g.lastmove = evt;
+    });
+    Module.graphics.buttonp = false;
+    ld.addEventListener('mousedown', (evt) => {
+        g.lastclick = evt;
+        Module.graphics.buttonp = true;
+        Module.ccall('mouse_down', 'void', [], []);
+        evt.preventDefault();
+        return false;
+    }, {capture: true});
+    ld.addEventListener('mouseup', (evt) => {
+        Module.graphics.buttonp = false;
+        evt.preventDefault();
+        return false;
+    }, {capture: true});
+    ld.addEventListener('contextmenu', (evt) => {
+        evt.preventDefault();
+        return false;
+    }, {capture: true});
+};
+Module.graphics.prepare_to_draw = () => { console.log("prepare_to_draw") };
+Module.graphics.done_drawing = () => { console.log("done_drawing") };
+Module.graphics.prepare_to_exit = (v) => { console.log(`prepare_to_exit(${v})`) };
+Module.graphics.clear_screen = () => {
+    // FIXME to work with mask erasing
+    console.log("clear_screen");
+    if (typeof document === 'undefined') return;
+    const dr = document.getElementById('logoDrawingContainer');
+    const g = document.getElementById('logoDrawingElements');
+    dr.removeChild(g);
+    const newg = document.createElementNS(SVG, 'g')
+    newg.id = 'logoDrawingElements';
+    dr.appendChild(newg);
+    const rect = document.createElementNS(SVG, 'rect');
+    rect.setAttribute('class', 'sizer');
+    newg.appendChild(rect);
+    const defs = document.getElementById('logoDefs');
+    defs.replaceChildren([]);
+    delete Module.graphics.mask;
+    Module.graphics.masknum = 0;
+};
+Module.graphics.prepare_to_draw = () => { console.log(`prepare_to_draw ${[]}`) };
+Module.graphics.done_drawing = () => { console.log(`done_drawing ${[]}`) };
+Module.graphics.prepare_to_exit = (v) => { console.log(`prepare_to_exit ${[v]}`) };
+Module.graphics.line_to = (x, y) => {
+    if (typeof document === 'undefined') return;
+    // console.log(`line_to ${[x, y]}`);
+    const g = Module.graphics;
+    const pen_info = g.pen_info;
+    if (pen_info.v == 0) {
+        const g = Module.graphics;
+        const masknum = Module.graphics.masknum;
+        const ld = document.getElementById(g.mask ? `logoMask${masknum}` : 'logoDrawingElements')
+        const el = document.createElementNS(SVG, 'line');
+        el.setAttribute("stroke-width", pen_info.sz);
+        if (g.mask) {
+            el.setAttribute('stroke', `black`);
+        }
+        else {
+            el.style.setProperty("mix-blend-mode", pen_info.mode);
+            el.style.setProperty('stroke', `var(--logo-color-${pen_info.c})`);
+        }
+        el.setAttribute("x1", x);
+        el.setAttribute("y1", y);
+        el.setAttribute("x2", pen_info.x);
+        el.setAttribute("y2", pen_info.y);
+        ld.appendChild(el);
+    };
+    pen_info.x = x;
+    pen_info.y = y;
+    const turtle = document.getElementById('logoTurtleTranslated');
+    turtle.setAttribute('transform', `translate(${x - 6}, ${y - 9})`);
+};
+Module.graphics.move_to = (x, y) => {
+    if (typeof document === 'undefined') return;
+    // console.log(`move_to ${[x, y]}`)
+    Module.graphics.pen_info.x = x;
+    Module.graphics.pen_info.y = y;
+    const turtle = document.getElementById('logoTurtleTranslated');
+    turtle.setAttribute('transform', `translate(${x - 6}, ${y - 9})`);
+};
+Module.graphics.label = (s) => {
+    if (typeof document === 'undefined') return;
+    console.log(`label ${[s]}`);
+    const g = Module.graphics;
+    const pen_info = g.pen_info;
+    const ld = document.getElementById('logoDrawingElements')
+    const el = document.createElementNS(SVG, 'text');
+    el.textContent = UTF8ToString(s);
+    el.style.setProperty('fill', `var(--logo-color-${pen_info.c})`);
+    el.setAttribute('font-size', pen_info.fntsz);
+    el.setAttribute('x', pen_info.x);
+    el.setAttribute('y', pen_info.y);
+    ld.appendChild(el);
+};
+Module.graphics.set_pen_vis = (v) => {
+    if (typeof document === 'undefined') return;
+    Module.graphics.pen_info.v = v;
+    console.log(`set_pen_vis ${[v]}`)
+};
+Module.graphics.set_pen_mode = (m) => { console.log(`set_pen_mode ${[m]}`) };
+Module.graphics.set_pen_color = (c) => {
+    if (typeof document === 'undefined') return;
+    console.log(`set_pen_color ${[c]}`);
+    const pen_info = Module.graphics.pen_info;
+    const el = document.getElementById('logoTurtleTranslated');
+    pen_info.c = c;
+    el.style.setProperty('stroke', `var(--logo-color-${pen_info.c})`);
+};
+Module.graphics.set_pen_width = (w) => {
+    if (typeof document === 'undefined') return;
+    console.log(`set_pen_width ${[w]}`);
+    Module.graphics.pen_info.sz = w;
+};
+Module.graphics.set_pen_height = (w) => {
+    if (typeof document === 'undefined') return;
+    console.log(`set_pen_height ${[w]}`);
+    Module.graphics.pen_info.sz = w;
+    const el = document.getElementById('logoTurtle');
+    el.style.setProperty('stroke-width', w);
+};
+// Module.graphics.set_pen_x = () => { console.log(`set_pen_x ${[]}`) };
+// Module.graphics.set_pen_y = () => { console.log(`set_pen_y ${[]}`) };
+Module.graphics.set_back_ground = (c) => {
+    if (typeof document === 'undefined') return;
+    console.log(`set_back_ground ${[c]}`)
+    const pen_info = Module.graphics.pen_info;
+    const el = document.getElementById("logoBackground")
+    el.style.setProperty('fill', `var(--logo-color-${c})`);
+    pen_info.bg = c;
+};
+Module.graphics.pen_reverse = () => { 
+    console.log(`pen_reverse ${[]}`) 
+    Module.graphics.pen_info.mode = 'difference';
+};
+Module.graphics.pen_erase = () => { 
+    console.log(`pen_erase ${[]}`) 
+    // create new mask in defs
+    // apply mask to current logoDrawingElements
+    // when pen != erase start new logoDrawingElements
+    const ld = document.getElementById('logoDrawing');
+    const lde = document.getElementById('logoDrawingElements');
+    const defs = document.getElementById('logoDefs');
+    const masknum = Module.graphics.masknum;
+    const g = Module.graphics;
+    const mask = document.createElementNS(SVG, 'mask');
+    mask.setAttribute('id', `logoMask${masknum}`);
+    const rect = document.createElementNS(SVG, 'rect');
+    rect.setAttribute('x', 0);
+    rect.setAttribute('y', 0);
+    rect.setAttribute('height', 480);
+    rect.setAttribute('width', 640);
+    rect.setAttribute('fill', 'white');
+    mask.appendChild(rect);
+    defs.appendChild(mask);
+    lde.setAttribute('mask', `url('#logoMask${masknum}')`);
+    lde.setAttribute('maskUnits', "userSpaceOnUse");
+    Module.graphics.mask = mask;
+};
+Module.graphics.pen_down = () => { 
+    console.log(`pen_down ${[]}`)
+    Module.graphics.pen_info.mode = 'initial';
+    if (Module.graphics.mask) {
+        const dr = document.getElementById('logoDrawingContainer');
+        const g = document.getElementById('logoDrawingElements');
+        dr.removeChild(g);
+        g.removeAttribute('id');
+        const newg = document.createElementNS(SVG, 'g')
+        newg.id = 'logoDrawingElements';
+        dr.appendChild(newg);
+        const rect = document.createElementNS(SVG, 'rect');
+        rect.setAttribute('class', 'sizer');
+        newg.appendChild(rect);
+        newg.appendChild(g);
+        delete Module.graphics.mask;
+        delete Module.graphics.masknum++;
+    }
+};
+Module.graphics.full_screen = () => { console.log(`full_screen ${[]}`) };
+Module.graphics.split_screen = () => { console.log(`split_screen ${[]}`) };
+Module.graphics.text_screen = () => { console.log(`text_screen ${[]}`) };
+Module.graphics.save_pen = (p) => { console.log(`save_pen ${[p]}`) };
+Module.graphics.restore_pen = (p) => { console.log(`restore_pen ${[p]}`) };
+Module.graphics.plain_xor_pen = () => { console.log(`plain_xor_pen ${[]}`) };
+// use https://developer.mozilla.org/en-US/docs/Web/API/OscillatorNode
+Module.graphics.tone = (pitch, duration) => { console.log(`tone ${[pitch, duration]}`) };
+Module.graphics.set_pen_pattern = (pat) => { console.log(`set_pen_pattern ${[pat]}`) };
+Module.graphics.get_pen_pattern = (pat) => { console.log(`get_pen_pattern ${[pat]}`) };
+Module.graphics.set_list_pen_pattern = (pat) => { console.log(`set_list_pen_pattern ${[pat]}`) };
+Module.graphics.prepare_to_draw_turtle = () => { console.log(`prepare_to_draw_turtle ${[]}`) };
+Module.graphics.web_done_drawing_turtle = () => { console.log(`web_done_drawing_turtle ${[]}`) };
+Module.graphics.logofill = () => { console.log(`logofill ${[]}`) };
+Module.graphics.set_palette = (i, r, g, b) => { 
+    console.log(`set_palette ${[i, r, g, b]}`);
+    const logoColors = Module.graphics.logoColors;
+    const styleElement = document.getElementById('logoColors');
+    const conv = n => n * 100 / 65535;
+    const c = logoColors[i] = {r: conv(r), g: conv(g), b: conv(b)};
+    styleElement.textContent = (
+`:root {
+${logoColors.map((c, idx) => `
+    --logo-color-${idx}: rgb(${c.r}%, ${c.g}%, ${c.b}%);`).join('\n')}
+}
+`);
+}
+Module.graphics.get_palette = (i, pR, pG, pB) => { 
+    console.log(`get_palette ${i}}`);
+    const logoColors = Module.graphics.logoColors;
+    const styleElement = document.getElementById('logoColors').style;
+        const {r, g, b} = logoColors[i] || {r: 0, g: 0, b: 0};
+        const setpv = (p, v) => {
+            setValue(p, v * 65535 / 100, 'i32');
+        }
+        setpv(pR, r);
+        setpv(pG, g);
+        setpv(pB, b);
+};
+Module.graphics.erase_screen = () => { console.log(`erase_screen ${[]}`) };
+Module.graphics.draw_turtle = (heading) => {
+    console.log(`draw_turtle ${heading}`);
+    const turtle = document.getElementById('logoTurtle');
+    turtle.setAttribute('transform', `rotate(${heading})`);
+};
+Module.graphics.get_label_size = () => {
+    console.log('get_label_size');
+    const pen_info = Module.graphics.pen_info;
+    const theLetterM = document.getElementById('theLetterM');
+    const { width } = theLetterM.getBoundingClientRect();
+    return { width: Math.floor(width), height: pen_info.fntsz };
+};
+Module.graphics.adjust_label_height = (h) => {
+    console.log(`adjust_label_height ${h}`);
+    const pen_info = Module.graphics.pen_info;
+    pen_info.fntsz = h;
+    const theLetterM = document.getElementById('theLetterM');
+    theLetterM.style.setProperty('font-size', h + 'px');
+};
+Module.graphics.hide_turtle = () => {
+    document.getElementById('logoTurtle').style.setProperty('display', 'none');
+};
+Module.graphics.show_turtle = () => {
+    document.getElementById('logoTurtle').style.setProperty('display', 'initial');
+};
+Module.graphics.filled_begin = (color) => {
+    const el = document.createElementNS(SVG, 'polygon');
+    const ld = document.getElementById('logoDrawingElements')
+    ld.appendChild(el);
+    const pen_info = Module.graphics.pen_info;
+    el.style.setProperty('fill', `var(--logo-color-${color})`);
+    el.style.setProperty('stroke', `var(--logo-color-${pen_info.c})`);
+    el.style.setProperty('stroke-linecap', 'round');
+    el.style.setProperty('stroke-linejoin', 'round');
+    el.style.setProperty('stroke-width', pen_info.sz);
+    Module.graphics.filled_poly = el;
+}
+Module.graphics.filled_add_point = (x, y) => {
+    const svgel = document.getElementById('logoDrawing')
+    const poly = Module.graphics.filled_poly;
+    const point = svgel.createSVGPoint();
+    point.x = x;
+    point.y = y;
+    Module.graphics.filled_poly.points.appendItem(point);
+}
+Module.graphics.filled_end = () => {
+    delete Module.graphics.filled_poly;
+}
+Module.graphics.web_get_buttonp = () => {
+    return Module.graphics.buttonp;
+}
+Module.graphics.web_get_button = () => {
+    const b = Module.graphics.lastclick?.button;
+    if (b != undefined) {
+        delete Module.graphics.lastclick;
+        if (b == 0) return 1;
+        if (b == 1) return 3;
+        if (b == 2) return 2;
+    }
+    return 0;
+}
+Module.graphics.web_get_mouse_x = () => {
+    return Module.graphics.lastmove?.offsetX - 320 || 0;
+}
+Module.graphics.web_get_mouse_y = () => {
+    return Module.graphics.lastmove?.offsetY * -1 + 240 || 0;
+}
+Module.graphics.web_get_click_x = () => {
+    return Module.graphics.lastclick?.offsetX - 320 || 0;
+}
+Module.graphics.web_get_click_y = () => {
+    return Module.graphics.lastclick?.offsetY * -1 + 240 || 0;
+}// end include: pre.js
 // include: /home/jeff/emsdk/upstream/emscripten/src/emrun_prejs.js
 /**
  * @license
@@ -4055,7 +4384,6 @@ async function createWasm() {
 
   var _emscripten_err = (str) => err(UTF8ToString(str));
 
-
   var getHeapMax = () =>
       // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
       // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
@@ -4540,6 +4868,81 @@ async function createWasm() {
       },
   };
 
+  var getCFunc = (ident) => {
+      var func = Module['_' + ident]; // closure exported function
+      assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
+      return func;
+    };
+  
+  var writeArrayToMemory = (array, buffer) => {
+      assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
+      HEAP8.set(array, buffer);
+    };
+  
+  
+  
+  
+  
+  
+    /**
+     * @param {string|null=} returnType
+     * @param {Array=} argTypes
+     * @param {Arguments|Array=} args
+     * @param {Object=} opts
+     */
+  var ccall = (ident, returnType, argTypes, args, opts) => {
+      // For fast lookup of conversion functions
+      var toC = {
+        'string': (str) => {
+          var ret = 0;
+          if (str !== null && str !== undefined && str !== 0) { // null string
+            ret = stringToUTF8OnStack(str);
+          }
+          return ret;
+        },
+        'array': (arr) => {
+          var ret = stackAlloc(arr.length);
+          writeArrayToMemory(arr, ret);
+          return ret;
+        }
+      };
+  
+      function convertReturnValue(ret) {
+        if (returnType === 'string') {
+          return UTF8ToString(ret);
+        }
+        if (returnType === 'boolean') return Boolean(ret);
+        return ret;
+      }
+  
+      var func = getCFunc(ident);
+      var cArgs = [];
+      var stack = 0;
+      assert(returnType !== 'array', 'Return type should not be "array".');
+      if (args) {
+        for (var i = 0; i < args.length; i++) {
+          var converter = toC[argTypes[i]];
+          if (converter) {
+            if (stack === 0) stack = stackSave();
+            cArgs[i] = converter(args[i]);
+          } else {
+            cArgs[i] = args[i];
+          }
+        }
+      }
+      var ret = func(...cArgs);
+      function onDone(ret) {
+        if (stack !== 0) stackRestore(stack);
+        return convertReturnValue(ret);
+      }
+    var asyncMode = opts?.async;
+  
+      if (asyncMode) return ret.then(onDone);
+  
+      ret = onDone(ret);
+      return ret;
+    };
+
   var FS_createPath = FS.createPath;
 
 
@@ -4565,9 +4968,92 @@ async function createWasm() {
 function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
-function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (document) { char = await new Promise((res, rej) => { document.addEventListener("nextChar", (event) => { const char = event.detail.char; console.debug(`getc ${event.detail.char}`); res(event.detail.char); }, { once: true }) }); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char.charCodeAt(0); }); }
+function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { char = await new Promise((res, rej) => { document.addEventListener("nextChar", (event) => { const char = event.detail.char; res(event.detail.char); }, { once: true }) }); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char.charCodeAt(0); }); }
 __asyncjs__em_getc.sig = 'i';
 function em_fflush(fh) { _fflush(fh) }
+function web_prepare_to_draw() { Module.graphics.prepare_to_draw(); }
+web_prepare_to_draw.sig = 'v';
+function web_done_drawing() { Module.graphics.done_drawing(); }
+web_done_drawing.sig = 'v';
+function prepare_to_exit(v) { Module.graphics.prepare_to_exit(v); }
+function web_clear_screen() { Module.graphics.clear_screen(); }
+web_clear_screen.sig = 'v';
+function line_to(x,y) { Module.graphics.line_to(x, y); }
+line_to.sig = 'vii';
+function move_to(x,y) { Module.graphics.move_to(x, y); }
+move_to.sig = 'vii';
+function set_pen_vis(v) { Module.graphics.set_pen_vis(v); }
+set_pen_vis.sig = 'vi';
+function set_pen_mode(m) { Module.graphics.set_pen_mode(m); }
+function set_pen_color(c) { Module.graphics.set_pen_color(c); }
+set_pen_color.sig = 'vi';
+function set_pen_width(w) { Module.graphics.set_pen_width(w); }
+set_pen_width.sig = 'vi';
+function set_pen_height(h) { Module.graphics.set_pen_height(h); }
+set_pen_height.sig = 'vi';
+function set_pen_x(x) { Module.graphics.set_pen_x(); }
+function set_pen_y(y) { Module.graphics.set_pen_y(); }
+function web_set_back_ground(c) { Module.graphics.set_back_ground(c); }
+web_set_back_ground.sig = 'vi';
+function web_pen_reverse() { Module.graphics.pen_reverse(); }
+web_pen_reverse.sig = 'v';
+function web_pen_erase() { Module.graphics.pen_erase(); }
+web_pen_erase.sig = 'v';
+function web_pen_down() { Module.graphics.pen_down(); }
+web_pen_down.sig = 'v';
+function web_full_screen() { Module.graphics.full_screen(); }
+web_full_screen.sig = 'v';
+function web_split_screen() { Module.graphics.split_screen(); }
+web_split_screen.sig = 'v';
+function web_text_screen() { Module.graphics.text_screen(); }
+function save_pen(p) { Module.graphics.save_pen(p); }
+save_pen.sig = 'vi';
+function restore_pen(p) { Module.graphics.restore_pen(p); }
+function label(s) { Module.graphics.label(s); }
+label.sig = 'vi';
+function tone(pitch,duration) { Module.graphics.tone(pitch, duration); }
+tone.sig = 'vii';
+function web_prepare_to_draw_turtle() { Module.graphics.prepare_to_draw_turtle(); }
+function web_done_drawing_turtle() { Module.graphics.web_done_drawing_turtle(); }
+function logofill() { Module.graphics.logofill(); }
+logofill.sig = 'v';
+function set_palette(i,R,G,B) { Module.graphics.set_palette(i, R, G, B); }
+set_palette.sig = 'viiii';
+function get_palette(i,pR,pG,pB) { Module.graphics.get_palette(i, pR, pG, pB); }
+get_palette.sig = 'viiii';
+function erase_screen() { Module.graphics.erase_screen(); }
+function web_get_mouse_x() { return Module.graphics.web_get_mouse_x(); }
+web_get_mouse_x.sig = 'i';
+function web_get_mouse_y() { return Module.graphics.web_get_mouse_y(); }
+web_get_mouse_y.sig = 'i';
+function web_get_click_x() { return Module.graphics.web_get_click_x(); }
+web_get_click_x.sig = 'i';
+function web_get_click_y() { return Module.graphics.web_get_click_y(); }
+web_get_click_y.sig = 'i';
+function web_get_button() { return Module.graphics.web_get_button(); }
+web_get_button.sig = 'i';
+function web_get_buttonp() { return Module.graphics.web_get_buttonp(); }
+web_get_buttonp.sig = 'i';
+function web_draw_turtle(heading) { Module.graphics.draw_turtle(heading); }
+web_draw_turtle.sig = 'id';
+function adjust_label_height(label_height) { Module.graphics.adjust_label_height(label_height); }
+adjust_label_height.sig = 'vi';
+function get_label_size(w,h) { const {width, height} = Module.graphics.get_label_size(); setValue(h, height, 'i32'); setValue(w, width, 'i32'); }
+get_label_size.sig = 'vii';
+function web_hide_turtle() { Module.graphics.hide_turtle(); }
+web_hide_turtle.sig = 'i';
+function web_show_turtle() { Module.graphics.show_turtle(); }
+web_show_turtle.sig = 'i';
+function web_filled_begin(color) { Module.graphics.filled_begin(color); }
+web_filled_begin.sig = 'vi';
+function web_filled_end() { Module.graphics.filled_end(); }
+web_filled_end.sig = 'v';
+function web_filled_add_point(x,y) { Module.graphics.filled_add_point(x, y); }
+web_filled_add_point.sig = 'vii';
+function web_graphics_init() { Module.graphics.graphics_init(); }
+web_graphics_init.sig = 'v';
+function web_keyp() { return 0; }
+web_keyp.sig = 'i';
 var wasmImports = {
   /** @export */
   __asyncjs__em_getc,
@@ -4588,13 +5074,13 @@ var wasmImports = {
   /** @export */
   _emscripten_throw_longjmp: __emscripten_throw_longjmp,
   /** @export */
+  adjust_label_height,
+  /** @export */
   clock_time_get: _clock_time_get,
   /** @export */
   emscripten_date_now: _emscripten_date_now,
   /** @export */
   emscripten_err: _emscripten_err,
-  /** @export */
-  emscripten_get_now: _emscripten_get_now,
   /** @export */
   emscripten_resize_heap: _emscripten_resize_heap,
   /** @export */
@@ -4616,6 +5102,10 @@ var wasmImports = {
   /** @export */
   fd_write: _fd_write,
   /** @export */
+  get_label_size,
+  /** @export */
+  get_palette,
+  /** @export */
   invoke_ddd,
   /** @export */
   invoke_id,
@@ -4626,12 +5116,84 @@ var wasmImports = {
   /** @export */
   invoke_v,
   /** @export */
-  invoke_vi
+  invoke_vi,
+  /** @export */
+  label,
+  /** @export */
+  line_to,
+  /** @export */
+  logofill,
+  /** @export */
+  move_to,
+  /** @export */
+  save_pen,
+  /** @export */
+  set_palette,
+  /** @export */
+  set_pen_color,
+  /** @export */
+  set_pen_height,
+  /** @export */
+  set_pen_vis,
+  /** @export */
+  set_pen_width,
+  /** @export */
+  tone,
+  /** @export */
+  web_clear_screen,
+  /** @export */
+  web_done_drawing,
+  /** @export */
+  web_draw_turtle,
+  /** @export */
+  web_filled_add_point,
+  /** @export */
+  web_filled_begin,
+  /** @export */
+  web_filled_end,
+  /** @export */
+  web_full_screen,
+  /** @export */
+  web_get_button,
+  /** @export */
+  web_get_buttonp,
+  /** @export */
+  web_get_click_x,
+  /** @export */
+  web_get_click_y,
+  /** @export */
+  web_get_mouse_x,
+  /** @export */
+  web_get_mouse_y,
+  /** @export */
+  web_graphics_init,
+  /** @export */
+  web_hide_turtle,
+  /** @export */
+  web_keyp,
+  /** @export */
+  web_pen_down,
+  /** @export */
+  web_pen_erase,
+  /** @export */
+  web_pen_reverse,
+  /** @export */
+  web_prepare_to_draw,
+  /** @export */
+  web_set_back_ground,
+  /** @export */
+  web_show_turtle,
+  /** @export */
+  web_split_screen
 };
 var wasmExports;
 createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
 var _fflush = createExportWrapper('fflush', 1);
+var _logo_stop = Module['_logo_stop'] = createExportWrapper('logo_stop', 1);
+var _logo_pause = Module['_logo_pause'] = createExportWrapper('logo_pause', 1);
+var _mouse_down = Module['_mouse_down'] = createExportWrapper('mouse_down', 1);
+var _delayed_keyact = Module['_delayed_keyact'] = createExportWrapper('delayed_keyact', 1);
 var _main = Module['_main'] = createExportWrapper('__main_argc_argv', 2);
 var ___funcs_on_exit = createExportWrapper('__funcs_on_exit', 0);
 var _strerror = createExportWrapper('strerror', 1);
@@ -4643,7 +5205,7 @@ var _emscripten_stack_get_end = () => (_emscripten_stack_get_end = wasmExports['
 var __emscripten_stack_restore = (a0) => (__emscripten_stack_restore = wasmExports['_emscripten_stack_restore'])(a0);
 var __emscripten_stack_alloc = (a0) => (__emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'])(a0);
 var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 2147124;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 2146636;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
@@ -4716,6 +5278,7 @@ function invoke_v(index) {
 
 Module['addRunDependency'] = addRunDependency;
 Module['removeRunDependency'] = removeRunDependency;
+Module['ccall'] = ccall;
 Module['FS_createPreloadedFile'] = FS_createPreloadedFile;
 Module['FS_unlink'] = FS_unlink;
 Module['FS_createPath'] = FS_createPath;
@@ -4758,8 +5321,6 @@ var missingLibrarySymbols = [
   'STACK_ALIGN',
   'POINTER_SIZE',
   'ASSERTIONS',
-  'getCFunc',
-  'ccall',
   'cwrap',
   'uleb128Encode',
   'generateFuncType',
@@ -4783,7 +5344,6 @@ var missingLibrarySymbols = [
   'stringToUTF32',
   'lengthBytesUTF32',
   'stringToNewUTF8',
-  'writeArrayToMemory',
   'registerKeyEventCallback',
   'maybeCStringToJsString',
   'findEventTarget',
@@ -4928,6 +5488,7 @@ var unexportedSymbols = [
   'addOnPreRun',
   'addOnExit',
   'addOnPostRun',
+  'getCFunc',
   'sigToWasmTypes',
   'freeTableIndexes',
   'functionsInTableMap',
@@ -4945,6 +5506,7 @@ var unexportedSymbols = [
   'stringToAscii',
   'UTF16Decoder',
   'stringToUTF8OnStack',
+  'writeArrayToMemory',
   'JSEvents',
   'specialHTMLTargets',
   'findCanvasEventTarget',
