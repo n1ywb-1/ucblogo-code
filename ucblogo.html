@@ -4,8 +4,13 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel="icon" type="image/x-icon" href="logologo.ico">
   <title>UCB Logo Web Edition</title>
   <style>
+    * {
+      font-family: monospace;
+    }
+
     .emscripten {
       padding-right: 0;
       margin-left: auto;
@@ -15,7 +20,7 @@
 
     textarea.emscripten {
       font-family: monospace;
-      width: 80%;
+      width: 100%;
     }
 
     div.emscripten {
@@ -90,18 +95,49 @@
 
     .flex {
       display: flex;
-      flex-grow: 1;
       justify-content: center;
+    }
+
+    .grow {
+      flex-grow: 1;
     }
 
     .wrap {
       flex-wrap: wrap;
     }
 
+    .reverse {
+      flex-wrap: wrap-reverse;
+    }
+
     .col {
       flex-direction: column;
     }
+
+    body {
+      margin: 0px;
+    }
+
+    .appContainer {
+      width: 100%;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
   </style>
+  <script>
+    window.addEventListener('resize', () => {
+      document.getElementById('appContainer')
+        .setAttribute('style', `width: 100%; height: ${document.documentElement.clientHeight}px;`)
+      outputElement.scrollTop = outputElement.scrollHeight; // focus on bottom
+    })
+    window.addEventListener('load', () => {
+      window.dispatchEvent(new Event('resize'));
+      document.getElementById('logoInputText').focus();
+      document.getElementById('logoInputText').select();
+    })
+  </script>
   <style id="logoColors">
     /* LOGO Colors */
     :root {
@@ -129,7 +165,6 @@
   <span id="theLetterM" style="
                               position: absolute;
                               visibility: hidden;
-                              font-size: 12;
                           ">M</span>
   <figure style="overflow:visible;" id="spinner">
     <div class="spinner"></div>
@@ -151,55 +186,149 @@
                                                                                 document.getElementById('resize').checked)">
   </div>
 
-  <div class="flex wrap">
-    <div class="flex col">
+  <div id="appContainer" class="appContainer flex col">
+    <div class="flex">
       <div class="flex">
-        <textarea readonly class="emscripten" id="output" rows="25"></textarea>
+        <input style="display: none" type="file" multiple id="uploadFileInput">
+        <button type="button" onclick="document.getElementById('uploadFileInput').click()">
+          <label>Upload Logo File</label>
+        </button>
+        </input>
+        <script>
+          document.getElementById('uploadFileInput').addEventListener('change', evt => Module.uploadFileButtonClicked(evt));
+        </script>
       </div>
+
       <div class="flex">
-        <form id="logoInputForm">
-          <input name="logoInputText" id="logoInputText" type="text" style="width: 100%">
-          <input type="submit" label="Run" />
-        </form>
+        <button type="button" onclick="Module.downloadSessionClicked(event)">
+          Download Logo session
+        </button>
+        <button type="button" onclick="Module.downloadDrawingClicked(event)">
+          Download Drawing
+        </button>
+        <button type="button" onclick="document.getElementById('settings').open = true">
+          Settings
+        </button>
       </div>
     </div>
-    <div class="flex">
-    <svg id="logoDrawing" version="1.1" xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"
-      style="transform: scale(1, 1)">
 
-      <style>
-        line {
-          stroke-linecap: round;
-          stroke-linejoin: round;
-        }
+    <div class="flex" id="svgContainer" style="max-height: 80%;">
+      <svg id="logoDrawing" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480"
+        style="transform: scale(1, 1); display: none; width: 100%; position: static;" aria-labelledby="uniqueTitleID"
+        role="group">
+        <title id="uniqueTitleID">Turtle Graphics Drawing</title>
 
-        #logoTurtle {
-          transform-box: fill-box;
-          transform-origin: center;
-        }
+        <style>
+          line,
+          polygon {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
 
-        .sizer {
-          fill: none;
-          stroke: none;
-          height: 100%;
-          width: 100%;
-        }
-      </style>
-      <defs id="logoDefs"></defs>
-      <g id="logoDrawingContainer">
-        <rect id="logoBackground" style="height: 100%; width: 100%"></rect>
-        <g id="logoDrawingElements">
-          <rect class="sizer" style="height: 100%; width: 100%"></rect>
+          #logoTurtle {
+            transform-box: fill-box;
+            transform-origin: center;
+          }
+
+          .sizer {
+            fill: none;
+            stroke: none;
+            height: 100%;
+            width: 100%;
+          }
+        </style>
+        <defs id="logoDefs"></defs>
+        <defs id="logoSpriteDefs">
+            <g id="logoSpriteTurtle">
+              <line x1="0" y1="18" x2="12" y2="18"></line>
+              <line x1="0" y1="18" x2="6" y2="0"></line>
+              <line x1="12" y1="18" x2="6" y2="0"></line>
+            </g>
+        </defs>
+        <g id="logoDrawingContainer">
+          <rect id="logoBackground" style="height: 100%; width: 100%"></rect>
+          <g id="logoDrawingElements">
+            <rect class="sizer" style="height: 100%; width: 100%"></rect>
+          </g>
         </g>
-      </g>
-      <g id="logoTurtleTranslated" transform="translate(314, 231)" style="stroke: black">
-        <g id="logoTurtle">
-          <line x1="0" y1="18" x2="12" y2="18"></line>
-          <line x1="0" y1="18" x2="6" y2="0"></line>
-          <line x1="12" y1="18" x2="6" y2="0"></line>
+        <g id="logoTurtleTranslated" transform="translate(314, 231)" style="stroke: black">
+          <g id="logoTurtle">
+            <use id="logoTurtleUse" href="#logoSpriteTurtle" />
+          </g>
         </g>
-      </g>
-    </svg>
+      </svg>
+    </div>
+
+    <div class="flex grow" id="logoInputContainer" style="width: 100%">
+      <div class="flex col grow">
+        <div class="flex grow">
+          <textarea rows="4" readonly class="emscripten" id="output"></textarea>
+        </div>
+
+        <div class="flex">
+          <form id="logoInputForm" class="flex" style="width: 100%">
+            <input name="logoInputText" id="logoInputText" type="text" style="width: 100%"
+              placeholder="Enter Logo commands here" onkeydown="Module.handleKeyDown(event)" spellcheck="off"
+              autocomplete="off"></input>
+            <input type="submit" label="Run"></input>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- <div>
+      Logo Files
+      <file-list data-files="">
+        <li>No Files Uploaded Yet</li>
+        <template id="fileListItemTemplate">
+          <li><span data-file=""></span><button class="loadFileButton" data=></button></li>
+        </template>
+      </file-list>
+    </div> -->
+    <dialog id="splash">
+      Splash Dialog
+    </dialog>
+    <dialog id="files">
+      File browser dialog
+    </dialog>
+    <dialog id="settings">
+      <div style="border-bottom: 1px solid black">Settings</div>
+      <ul>
+        <!-- <li>
+          <input type="checkbox">
+          <label>Expandable drawing</label>
+          </input>
+        </li>
+        <li>
+          <input type="checkbox">
+          <label>Drawing size</label>
+          </input>
+        </li> -->
+        <li>
+          <label>Shape rendering mode</label>
+          <ul>
+            <li>
+              <input type=radio name="shapeRenderingMode" checked value="geometricprecision"
+                onclick="document.getElementById('logoDrawing').style.setProperty('shape-rendering', 'geometricprecision')"><label>Geometric-precision
+                (anti-aliasing)</label>
+              </input>
+            </li>
+            <li>
+              <input type=radio name="shapeRenderingMode" value="crispedges"
+                onclick="document.getElementById('logoDrawing').style.setProperty('shape-rendering', 'crispedges')"><label>Crisp-edges
+                (no anti-aliasing)</label></input>
+            </li>
+            <li>
+              <input type=radio name="shapeRenderingMode" value="optimizespeed"
+                onclick="document.getElementById('logoDrawing').style.setProperty('shape-rendering', 'optimizespeed')"><label>Optimize-speed
+                (no anti-aliasing)</label></input>
+            </li>
+          </ul>
+          </input>
+        </li>
+      </ul>
+      <button type="button" onclick="document.getElementById('settings').open = false">Ok</button>
+    </dialog>
   </div>
 
   <script type='text/javascript'>
@@ -228,7 +357,8 @@
         console.log(...args);
         if (outputElement) {
           var text = args.join(' ');
-          outputElement.value += text + "\n";
+          outputElement.value += text;
+          outputElement.value += "\n";
           outputElement.scrollTop = outputElement.scrollHeight; // focus on bottom
         }
       },
@@ -278,19 +408,14 @@
         event.preventDefault();
         let line = new FormData(event.target)
           .get('logoInputText')
+        Module.commandHistory.unshift(line);
+        Module.commandHistoryIdx = -1;
         Module.print(line);
         let chars = line.split("");
         chars.push("\n");
-        while (chars.length) {
-          document.dispatchEvent(
-            new CustomEvent(
-              "nextChar",
-              { detail: { char: chars.shift() } }
-            )
-          );
-          await new Promise(r => setTimeout(r, 1));
-        }
+        Module.FS_runjs_getChar_buffer.push(...chars);
         document.getElementById('logoInputText').value = "";
+        document.dispatchEvent(new CustomEvent("getcharready"));
         return false;
       })
     });
