@@ -43,3 +43,4 @@ ucblogo.html
 ucblogo.js
 ucblogo.mjs
 node_modules
+dist/
