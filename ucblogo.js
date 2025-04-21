@@ -140,6 +140,7 @@ Module.runjs = (expr) => {
     }
     catch (error) {
         r = error.toString();
+        console.error(error);
         window.alert(r);
     }
     if (r instanceof Promise) {
@@ -158,8 +159,8 @@ Module.graphics.pen_info = {
     fntsz: 12,
     mode: 'normal',
 };
-Module.graphics.lastclick = {offsetX: 0, offsetY: 0, button: 0};
-Module.graphics.lastmove = {offsetX: 0, offsetY: 0, button: 0};
+Module.graphics.lastclick = { offsetX: 0, offsetY: 0, button: 0 };
+Module.graphics.lastmove = { offsetX: 0, offsetY: 0, button: 0 };
 Module.graphics.graphics_init = () => {
     const g = Module.graphics;
     // console.log("graphics_init");
@@ -179,9 +180,9 @@ Module.graphics.graphics_init = () => {
         return false;
     };
     // if (document.ontouchstart) {
-        // ld.addEventListener('touchstart', handleMouseDown, { capture: true });
+    // ld.addEventListener('touchstart', handleMouseDown, { capture: true });
     // } else {
-        ld.addEventListener('mousedown', handleMouseDown, { capture: true });
+    ld.addEventListener('mousedown', handleMouseDown, { capture: true });
     // }
     ld.addEventListener('mouseup', (evt) => {
         Module.graphics.buttonp = false;
@@ -508,19 +509,19 @@ Module.graphics.screenToSVGCoords = (screenX, screenY) => {
     return svgp;
 }
 Module.graphics.web_get_mouse_x = () => {
-    const {offsetX, offsetY} = Module.graphics.lastmove;
+    const { offsetX, offsetY } = Module.graphics.lastmove;
     return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
 }
 Module.graphics.web_get_mouse_y = () => {
-    const {clientX, clientY} = Module.graphics.lastmove;
+    const { clientX, clientY } = Module.graphics.lastmove;
     return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
 }
 Module.graphics.web_get_click_x = () => {
-    const {clientX, clientY} = Module.graphics.lastclick;
+    const { clientX, clientY } = Module.graphics.lastclick;
     return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
 }
 Module.graphics.web_get_click_y = () => {
-    const {clientX, clientY} = Module.graphics.lastclick;
+    const { clientX, clientY } = Module.graphics.lastclick;
     return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
 }
 Module.upgradeLogoElements = () => {
@@ -704,7 +705,44 @@ Module.handleCommandHistorySelectChanged = (event) => {
     inputText.value = Module.commandHistory[Module.commandHistoryIdx];
     inputText.focus();
     document.getElementById('commandHistorySelect').value = '';
-};// end include: pre.js
+};
+Module.editor = {};
+Module.editor.applyClicked = (event) => {
+    FS.writeFile(Module.editor.filepath, document.getElementById('editorTextArea').value);
+    document.getElementById('editorDialog').close();
+    document.getElementById('editorDialog').dispatchEvent(new CustomEvent('close'));
+};
+Module.editor.discardClicked = (event) => {
+    document.getElementById('editorDialog').close();
+    document.getElementById('editorTextArea').value = '';
+    document.getElementById('editorDialog').dispatchEvent(new CustomEvent('close'));
+};
+Module.editor.edit = async (filepath) => {
+    return new Promise((res, rej) => {
+        let contents = '';
+        Module.editor.filepath = filepath;
+        try {
+            try {
+                contents = UTF8ArrayToString(FS.readFile(filepath));
+            }
+            catch (error) {
+                if (error.errno == 44) {
+                    // file not found
+                    console.warn(`${filepath} does not exist, will attempt to create it`)
+                }
+                else {
+                    rej(err);
+                }
+            }
+            document.getElementById('editorTextArea').value = contents;
+            document.getElementById('editorDialog').showModal();
+            document.getElementById('editorDialog').addEventListener('close', res, { once: true });
+        }
+        catch (err) {
+            rej(err);
+        }
+    })
+}// end include: pre.js
 // include: /home/jeff/emsdk/upstream/emscripten/src/emrun_prejs.js
 /**
  * @license
@@ -4759,8 +4797,6 @@ async function createWasm() {
     };
 
 
-  var _emscripten_err = (str) => err(UTF8ToString(str));
-
   var getHeapMax = () =>
       // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
       // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
@@ -5346,11 +5382,13 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var ASM_CONSTS = {
-  2256699: ($0) => { outputElement.value += UTF8ToString($0) }
+  2256864: ($0) => { outputElement.value += UTF8ToString($0) }
 };
 function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift(); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char.charCodeAt(0); }); }
 __asyncjs__em_getc.sig = 'i';
 function em_fflush(fh) { _fflush(fh) }
+function __asyncjs__web_edit(tmp_filename) { return Asyncify.handleAsync(async () => { try { await Module.editor.edit(UTF8ToString(tmp_filename)); } catch (error) { console.error(error); window.alert(error); } }); }
+__asyncjs__web_edit.sig = 'vi';
 function __asyncjs__web_get_any_key() { return Asyncify.handleAsync(async () => { await new Promise((res,rej)=>{ window.addEventListener( 'keydown', event=>{ event.preventDefault(); res(); return false; }, {once: true} ); }); }); }
 __asyncjs__web_get_any_key.sig = 'i';
 function web_prepare_to_draw() { Module.graphics.prepare_to_draw(); }
@@ -5441,6 +5479,8 @@ var wasmImports = {
   /** @export */
   __asyncjs__em_getc,
   /** @export */
+  __asyncjs__web_edit,
+  /** @export */
   __asyncjs__web_get_any_key,
   /** @export */
   __syscall_chdir: ___syscall_chdir,
@@ -5466,8 +5506,6 @@ var wasmImports = {
   emscripten_asm_const_int: _emscripten_asm_const_int,
   /** @export */
   emscripten_date_now: _emscripten_date_now,
-  /** @export */
-  emscripten_err: _emscripten_err,
   /** @export */
   emscripten_resize_heap: _emscripten_resize_heap,
   /** @export */
@@ -5594,7 +5632,7 @@ var _emscripten_stack_get_end = () => (_emscripten_stack_get_end = wasmExports['
 var __emscripten_stack_restore = (a0) => (__emscripten_stack_restore = wasmExports['_emscripten_stack_restore'])(a0);
 var __emscripten_stack_alloc = (a0) => (__emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'])(a0);
 var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 2224404;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 2224372;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
