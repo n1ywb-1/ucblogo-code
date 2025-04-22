@@ -1,8 +1,10 @@
 module.exports = {
+	maximumFileSizeToCacheInBytes: 10000000000,
 	globDirectory: './',
 	globPatterns: [
 		'ucblogo.html',
 		'ucblogo.js',
+		'ucblogo.wasm',
 	],
 	swDest: 'sw.js',
 	ignoreURLParametersMatching: [
