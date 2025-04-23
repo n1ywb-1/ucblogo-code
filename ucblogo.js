@@ -742,6 +742,16 @@ Module.editor.edit = async (filepath) => {
             rej(err);
         }
     })
+}
+Module.softKeyDown = (event, key) => {
+    event.preventDefault(); // Stop button from taking focus
+    const inputtext = document.getElementById('logoInputText');
+    const {selectionStart} = inputtext;
+    inputtext.value = inputtext.value.slice(0, selectionStart)
+        + key + inputtext.value.slice(selectionStart, inputtext.value.length);
+    inputtext.focus();
+    inputtext.setSelectionRange(selectionStart+1, selectionStart+1);
+    return false;
 }// end include: pre.js
 // include: /home/jeff/emsdk/upstream/emscripten/src/emrun_prejs.js
 /**
