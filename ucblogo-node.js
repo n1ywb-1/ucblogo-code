@@ -6428,8 +6428,8 @@ if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); };
 // End JS library code
 
 var ASM_CONSTS = {
-  29123: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
- 29252: () => { console.log("dropped frame due to LOGO_GIL") }
+  29107: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
+ 29236: () => { console.log("dropped frame due to LOGO_GIL") }
 };
 function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift()?.charCodeAt(0); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
 function em_fflush(fh) { _fflush(fh) }
@@ -6657,14 +6657,14 @@ var _asyncify_start_unwind = (a0) => (_asyncify_start_unwind = wasmExports['asyn
 var _asyncify_stop_unwind = () => (_asyncify_stop_unwind = wasmExports['asyncify_stop_unwind'])();
 var _asyncify_start_rewind = (a0) => (_asyncify_start_rewind = wasmExports['asyncify_start_rewind'])(a0);
 var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports['asyncify_stop_rewind'])();
-var _Unbound = Module['_Unbound'] = 90420;
-var _inside_evaluator = Module['_inside_evaluator'] = 29760;
-var _in_eval_save = Module['_in_eval_save'] = 29900;
-var _int_during_gc = Module['_int_during_gc'] = 159308;
-var _Buttonact = Module['_Buttonact'] = 90456;
-var _inside_gc = Module['_inside_gc'] = 159304;
-var _LOGO_GIL = Module['_LOGO_GIL'] = 25464;
-var _animationFrameID = Module['_animationFrameID'] = 160656;
+var _Unbound = Module['_Unbound'] = 90404;
+var _inside_evaluator = Module['_inside_evaluator'] = 29744;
+var _in_eval_save = Module['_in_eval_save'] = 29884;
+var _int_during_gc = Module['_int_during_gc'] = 159292;
+var _Buttonact = Module['_Buttonact'] = 90440;
+var _inside_gc = Module['_inside_gc'] = 159288;
+var _LOGO_GIL = Module['_LOGO_GIL'] = 25448;
+var _animationFrameID = Module['_animationFrameID'] = 160640;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
