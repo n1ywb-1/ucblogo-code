@@ -2,7 +2,7 @@
   "name": "ucblogo",
   "version": "6.2.5",
   "description": "## Berkeley Logo interpreter",
-  "main": "ucblogo.html",
+  "main": "ucblogo.js",
   "directories": {
     "doc": "docs",
     "test": "tests"

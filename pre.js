@@ -1,6 +1,8 @@
 const SVG = 'http://www.w3.org/2000/svg';
 
 Module.onRuntimeInitialized = () => {
+    // do not mount if running on node
+    if (typeof document === 'undefined') return;
     // Mount IDBFS
     FS.mkdir('/d');
     FS.mount(IDBFS, {autoPersist: true}, '/d');
@@ -52,7 +54,64 @@ Module.graphics.logoColors = [
     { r: 71.4854657816434, g: 71.4854657816434, b: 71.4854657816434 },
 ];
 Module.FS_runjs_getChar_buffer = [];
+
+// CoPilot port of gdb.rc
+Module.logoGC = {
+    nodeTypes: {
+        empty: 0o40000,
+        caseobj: 0o1,
+        list: 0o10000,
+        aggregate: 0o20000,
+        tree: 0o100000,
+    },
+    segmentList() {
+        return Module._logo_gc_debug_segment_list();
+    },
+    inspect(address) {
+        return {
+            address,
+            id: Module._logo_gc_debug_node_id(address),
+            type: Module._logo_gc_debug_node_type(address),
+            car: Module._logo_gc_debug_node_car(address),
+            cdr: Module._logo_gc_debug_node_cdr(address),
+            object: Module._logo_gc_debug_node_obj(address),
+            next: Module._logo_gc_debug_node_next(address),
+            generation: Module._logo_gc_debug_node_generation(address),
+            mark: Module._logo_gc_debug_node_mark(address),
+        };
+    },
+    dumpNodes() {
+        const nodes = [];
+        for (let segment = this.segmentList(); segment;
+             segment = Module._logo_gc_debug_segment_next(segment)) {
+            const size = Module._logo_gc_debug_segment_size(segment);
+            for (let index = 0; index < size; index++) {
+                nodes.push(this.inspect(
+                    Module._logo_gc_debug_segment_node(segment, index)
+                ));
+            }
+        }
+        console.table(nodes);
+        return nodes;
+    },
+    pcons(address, seen = new Set()) {
+        if (!address || seen.has(address)) return;
+        seen.add(address);
+        const node = this.inspect(address);
+        console.log(node);
+        if (node.type === -1 || (node.type & this.nodeTypes.empty)) return;
+        if (node.type & this.nodeTypes.tree) this.pcons(node.object, seen);
+        if (node.type & (this.nodeTypes.list | this.nodeTypes.aggregate)) {
+            this.pcons(node.car, seen);
+            this.pcons(node.cdr, seen);
+        }
+        if (node.type & this.nodeTypes.caseobj) this.pcons(node.car, seen);
+    },
+};
+if (typeof globalThis !== 'undefined') globalThis.logoGC = Module.logoGC;
+
 Module.preRun = () => {
+    if (typeof document === 'undefined') return;
     const PREFIX = "/share/ucblogo";
     ENV.LOGOLIB = PREFIX + "/logolib";
     ENV.LOGOHELP = PREFIX + "/helpfiles";
@@ -114,6 +173,7 @@ const BLON = {
     }
 };
 Module.FS_runjs_getChar_buffer_append_obj = (obj) => {
+    if (typeof document === 'undefined') return;
     // Module.FS_runjs_getChar_buffer
     //     .push(...intArrayFromString(BLON.stringify(obj), true));
     // Module.FS_runjs_getChar_buffer.push(10);
@@ -123,12 +183,14 @@ Module.FS_runjs_getChar_buffer_append_obj = (obj) => {
     document.dispatchEvent(new CustomEvent("getcharready"));
 }
 Module.FS_runjs_getChar_buffer_append_str = (str) => {
+    if (typeof document === 'undefined') return;
     let chars = str.split("");
     chars.push("\n");
     Module.FS_runjs_getChar_buffer.push(...chars);
     document.dispatchEvent(new CustomEvent("getcharready"));
 }
 Module.runjs = (expr) => {
+    if (typeof document === 'undefined') return;
     let r;
     try {
         r = eval(expr);
@@ -154,39 +216,27 @@ Module.graphics.pen_info = {
     fntsz: 12,
     mode: 'normal',
 };
-Module.graphics.lastclick = { offsetX: 0, offsetY: 0, button: 0 };
-Module.graphics.lastmove = { offsetX: 0, offsetY: 0, button: 0 };
+// Module.graphics.lastclick = { offsetX: 0, offsetY: 0, button: 0 };
+// Module.graphics.lastmove = { offsetX: 0, offsetY: 0, button: 0 };
 Module.graphics.graphics_init = () => {
+    if (typeof document === 'undefined') return;
     const g = Module.graphics;
     // console.log("graphics_init");
     g.clear_screen();
     g.masknum = 0;
     const ld = document.getElementById('logoDrawing');
     Module.graphics.set_back_ground(0);
-    ld.addEventListener('mousemove', (evt) => {
-        g.lastmove = evt;
-    });
     Module.graphics.buttonp = false;
-    const handleMouseDown = (evt) => {
-        g.lastclick = evt;
-        Module.graphics.buttonp = true;
-        Module.ccall('mouse_down', 'void', [], []);
-        evt.preventDefault();
-        return false;
-    };
+    ld.addEventListener('mousedown', Module.onmousedown, { capture: true });
+    ld.addEventListener('mouseup', Module.onmouseup, { capture: true });
+    ld.addEventListener('mousemove', Module.onmousemove);
+    // todo touch support
     // if (document.ontouchstart) {
     // ld.addEventListener('touchstart', handleMouseDown, { capture: true });
-    // } else {
-    ld.addEventListener('mousedown', handleMouseDown, { capture: true });
-    // }
-    ld.addEventListener('mouseup', (evt) => {
-        Module.graphics.buttonp = false;
-        evt.preventDefault();
-        return false;
-    }, { capture: true });
+    // todo right-button support
     ld.addEventListener('contextmenu', (evt) => {
+        // suppress context menu
         evt.preventDefault();
-        return false;
     }, { capture: true });
 };
 Module.graphics.prepare_to_draw = () => {
@@ -361,8 +411,8 @@ Module.graphics.split_screen = () => {
     if (Module.graphics.mode == 'split_screen') return;
     Module.graphics.mode = 'split_screen';
     // console.log(`split_screen ${[]}`);
-    document.getElementById('logoDrawing')
-        .style.setProperty('display', 'block');
+    document.getElementById('svgContainer')
+        .style.setProperty('display', 'flex');
     document.getElementById('logoInputContainer')
         .style.setProperty('display', 'flex');
     window.dispatchEvent(new Event('resize'));
@@ -371,7 +421,7 @@ Module.graphics.text_screen = () => {
     if (Module.graphics.mode == 'text_screen') return;
     Module.graphics.mode = 'text_screen';
     console.log(`text_screen ${[]}`);
-    document.getElementById('logoDrawing')
+    document.getElementById('svgContainer')
         .style.setProperty('display', 'none');
     document.getElementById('logoInputContainer')
         .style.setProperty('display', 'flex');
@@ -482,18 +532,14 @@ Module.graphics.filled_add_point = (x, y) => {
 Module.graphics.filled_end = () => {
     delete Module.graphics.filled_poly;
 }
-Module.graphics.web_get_buttonp = () => {
-    return Module.graphics.buttonp;
-}
-Module.graphics.web_get_button = () => {
-    const b = Module.graphics.lastclick?.button;
-    if (b != undefined) {
-        delete Module.graphics.lastclick;
-        if (b == 0) return 1;
-        if (b == 1) return 3;
-        if (b == 2) return 2;
-    }
-    return 0;
+// Module.graphics.web_get_buttonp = () => {
+//     return Module.graphics.buttonp;
+// }
+Module.graphics.web_get_button = (b) => {
+    if (b == 0) return 1;
+    if (b == 1) return 3;
+    if (b == 2) return 2;
+    console.error("invalid mouse button");
 }
 Module.graphics.screenToSVGCoords = (screenX, screenY) => {
     const ld = document.getElementById('logoDrawing');
@@ -501,24 +547,26 @@ Module.graphics.screenToSVGCoords = (screenX, screenY) => {
     p.x = screenX;
     p.y = screenY;
     const svgp = p.matrixTransform(ld.getScreenCTM().inverse());
+    svgp.x -= 320;
+    svgp.y = -svgp.y + 240 
     return svgp;
 }
-Module.graphics.web_get_mouse_x = () => {
-    const { offsetX, offsetY } = Module.graphics.lastmove;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
-}
-Module.graphics.web_get_mouse_y = () => {
-    const { clientX, clientY } = Module.graphics.lastmove;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
-}
-Module.graphics.web_get_click_x = () => {
-    const { clientX, clientY } = Module.graphics.lastclick;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
-}
-Module.graphics.web_get_click_y = () => {
-    const { clientX, clientY } = Module.graphics.lastclick;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
-}
+// Module.graphics.web_get_mouse_x = () => {
+//     const { offsetX, offsetY } = Module.graphics.lastmove;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
+// }
+// Module.graphics.web_get_mouse_y = () => {
+//     const { clientX, clientY } = Module.graphics.lastmove;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
+// }
+// Module.graphics.web_get_click_x = () => {
+//     const { clientX, clientY } = Module.graphics.lastclick;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
+// }
+// Module.graphics.web_get_click_y = () => {
+//     const { clientX, clientY } = Module.graphics.lastclick;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
+// }
 Module.upgradeLogoElements = () => {
     class LogoElement extends HTMLElement {
         static observedAttributes = ['id', 'class', 'style', 'hidden', 'accesskey', 'checked', 'data-logo', 'disabled', 'draggable', 'height', 'loop', 'controls', 'name', 'open', 'readonly', 'reversed', 'rows', 'selected', 'size', 'slot', 'value', 'width', 'wrap'];
@@ -638,6 +686,9 @@ Module.commandHistory = [];
 Module.commandHistoryIdx = -1;
 Module.currentCommand = null;
 Module.handleKeyDown = evt => {
+    // for keyact
+    Module.onkeydown(evt);
+
     const inputText = document.getElementById('logoInputText');
     if (evt.key == "ArrowDown") {
         evt.preventDefault();
@@ -664,7 +715,7 @@ Module.handleKeyDown = evt => {
     }
 };
 Module.makeSprite = name => {
-    debugger;
+    // debugger;
     const drawing = document.getElementById('logoDrawing');
     const defs = Module.graphics.getSpriteDefs();
     const drawingContainer = document.getElementById('logoDrawingContainer');
@@ -751,3 +802,207 @@ Module.softKeyDown = (event, key) => {
     targettext.setSelectionRange(selectionStart+1, selectionStart+1);
     return false;
 }
+
+// FIXME add options for objective logo and object serializer 
+Module.LogoNodeProto = {
+    baseaddr: null,
+    eq: function(node) {
+        return this.baseaddr === node.baseaddr;
+    },
+    ne: function(node) {
+        return !this.eq(node);
+    },
+    get car() {
+        return Module.LogoNode(
+            Module.getValue(this.baseaddr + 6 * 4, 'i32')
+        );
+    },
+    get cdr() {
+        return Module.LogoNode(
+            Module.getValue(this.baseaddr + 7 * 4, 'i32')
+        );
+    },
+    get obj() {
+        return Module.LogoNode(
+            Module.getValue(this.baseaddr + 8 * 4, 'i32')
+        );
+    },
+    get cadr() { return this.cdr.car },
+    get object__caseobj() { return this.cdr },
+    get valnode__object() { return this.cadr.cdr },
+    get valnode__caseobj() { return this.valnode__object.object__caseobj },
+};
+
+Module.LogoNode = (baseaddr)=>{
+    const o = Object.create(Module.LogoNodeProto)
+    o.baseaddr = baseaddr;
+    return o;
+};
+
+// Non-reentrant mousedown
+// Module.safe_mouse_down = (evt) => {
+// 	const inside_gc = getValue(Module['_inside_gc'], 'i32');
+// 	const in_eval_save = getValue(Module['_in_eval_save'], 'i32');
+// 	const int_during_gc = getValue(Module['_int_during_gc'], 'i32');
+// 	const inside_evaluator = getValue(Module['_inside_evaluator'], 'i32');
+// 	const ptr_Buttonact = getValue(Module['_Buttonact'], 'i32');
+//     const Buttonact = Module.LogoNode(ptr_Buttonact);
+// 	const ptr_Unbound = getValue(Module['_Unbound'], 'i32');
+//     const UNBOUND = Module.LogoNode(ptr_Unbound);
+//     const NIL = Module.LogoNode(0);
+//     const line = Buttonact.valnode__caseobj;
+
+//     evt.preventDefault();
+//     Module.graphics.lastclick = evt;
+//     Module.graphics.buttonp = true;
+    
+//     const n = evt.n;
+//     if (typeof evt.n === 'undefined') evt.n = 10;
+//     evt.n--;
+//     if (evt.n < 0) {
+//         console.warn('mousedown failed');
+//         return;
+//     }
+
+//     if (Asyncify.state === 0 && getValue(Module['_LOGO_GIL']) === 0) {
+//         setValue(Module['_LOGO_GIL'], 1, 'i32');
+//         Module.ccall('mouse_down', 'void', [], []);
+//         setValue(Module['_LOGO_GIL'], 0, 'i32');
+//     }
+//     else if  (inside_gc || in_eval_save)
+// 	{
+// 		if (int_during_gc == 0)
+// 			setValue(Module['_int_during_gc'], 3, 'i32');
+// 	}
+// 	else if (line.ne(UNBOUND) && line.ne(NIL)) {
+//         if (inside_evaluator) {
+//             setValue(Module['_eval_buttonact'], line, 'i32');
+//             const timeout = Module.WEB_WAIT_TIMEOUT_ID;
+//             if (timeout) {
+//                 Module.WEB_WAIT_TIMEOUT_ID = 0;
+//                 clearTimeout(timeout);
+//                 Module.WEB_WAIT_WAKEUP();
+//             }
+//         }
+//         else {
+//                 console.warn('mousedown deferred');
+//                 setTimeout(()=>Module.safe_mouse_down(evt), 5);
+//         }
+//     }
+// };
+
+class UIEventQueue extends Array {
+    unshift(...items) {
+        if (this.length < 10) {
+            return super.unshift(...items);
+        }
+        else {
+            console.warn('uievents queue overflow')
+        }
+    }
+}
+
+Module.uievents = new UIEventQueue();
+
+const EVT_T_MOUSEDOWN = 0;
+const EVT_T_MOUSEUP = 1;
+const EVT_T_CLICK = 2; 
+const EVT_T_MOUSEMOVE = 3;
+const EVT_T_KEYDOWN = 4;
+const EVT_T_KEYUP = 5;
+const EVT_T_KEYPRESS = 6;
+const EVT_T_PAUSELOGO = 7;
+const EVT_T_STOPLOGO = 8;
+
+ Module.uieventypes = {
+    'mousedown': EVT_T_MOUSEDOWN,
+    'mouseup': EVT_T_MOUSEUP,
+    'click': EVT_T_CLICK, 
+    'mousemove': EVT_T_MOUSEMOVE,
+    'keydown': EVT_T_KEYDOWN,
+    'keyup': EVT_T_KEYUP,
+    'keypress': EVT_T_KEYPRESS,
+    // TODO these can be simple flags, and should be higher
+    // priority than ui events
+    'pauselogo': 7,
+    'stoplogo': 8,
+}
+
+Module.gdk_keycodes = {
+   'ArrowDown': 0xFF54,
+   'ArrowLeft': 0xFF51,
+   'ArrowRight': 0xFF53,
+   'ArrowUp': 0xFF52,
+}
+
+Module.run_evaluator = () => {
+    if (Asyncify.state === 0 
+        && getValue(Module['_LOGO_GIL']) === 0
+    ) {
+        Module._run_evaluator(false);
+    }
+    else {
+        const timeout = Module.WEB_WAIT_TIMEOUT_ID;
+        if (timeout) {
+            Module.WEB_WAIT_TIMEOUT_ID = 0;
+            clearTimeout(timeout);
+            Module.WEB_WAIT_WAKEUP();
+        }
+    }
+}
+
+Module.onmouseevt = (evt, type) => {
+    evt.preventDefault();
+    const {x,y} = (Module.graphics
+        .screenToSVGCoords(evt.clientX, evt.clientY));
+    Module.uievents.unshift({
+        type: Module.uieventypes[type],   
+        button: Module.graphics.web_get_button(evt.button),
+        x, y
+    });
+    Module.run_evaluator(false);
+    return false;
+}
+
+Module.onmousedown = (evt) => {
+    Module.graphics.lastclick = evt;
+    Module.graphics.buttonp = true;
+    return Module.onmouseevt(evt, 'mousedown');
+}
+
+Module.onmouseup = (evt) => {
+    Module.graphics.buttonp = false;
+    return Module.onmouseevt(evt, 'mouseup');
+}
+
+Module.onmousemove = (evt) => {
+    Module.graphics.lastmove = evt;
+    return Module.onmouseevt(evt, 'mousemove');
+}
+
+Module.onkeydown = (evt) => {
+    // evt.preventDefault();
+    Module.uievents.unshift({
+        type: Module.uieventypes['keydown'],   
+        key: Module.gdk_keycodes[evt.key] || evt.key.charCodeAt(0),
+    });
+    Module.run_evaluator(false);
+    return false;
+}
+
+Module.onpauselogo = (evt) => {
+    if (getValue(Module['_LOGO_GIL']) === 0) return;
+    Module.uievents.splice(0, Module.uievents.length, {
+        type: EVT_T_PAUSELOGO
+    });
+    Module.run_evaluator(false);
+}
+
+Module.onstoplogo = (evt) => {
+    if (getValue(Module['_LOGO_GIL']) === 0) return;
+    Module.uievents.splice(0, Module.uievents.length, {
+        type: EVT_T_STOPLOGO
+    });
+    Module.run_evaluator(false);
+}
+ 

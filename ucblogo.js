@@ -19,17 +19,10 @@ var Module = typeof Module != 'undefined' ? Module : {};
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-// Attempt to auto-detect the environment
-var ENVIRONMENT_IS_WEB = typeof window == 'object';
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
-// N.b. Electron.js environment is simultaneously a NODE-environment, but
-// also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
-var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
-
-if (ENVIRONMENT_IS_NODE) {
-
-}
+var ENVIRONMENT_IS_WEB = true;
+var ENVIRONMENT_IS_WORKER = false;
+var ENVIRONMENT_IS_NODE = false;
+var ENVIRONMENT_IS_SHELL = false;
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
@@ -37,6 +30,8 @@ if (ENVIRONMENT_IS_NODE) {
 const SVG = 'http://www.w3.org/2000/svg';
 
 Module.onRuntimeInitialized = () => {
+    // do not mount if running on node
+    if (typeof document === 'undefined') return;
     // Mount IDBFS
     FS.mkdir('/d');
     FS.mount(IDBFS, {autoPersist: true}, '/d');
@@ -88,7 +83,64 @@ Module.graphics.logoColors = [
     { r: 71.4854657816434, g: 71.4854657816434, b: 71.4854657816434 },
 ];
 Module.FS_runjs_getChar_buffer = [];
+
+// CoPilot port of gdb.rc
+Module.logoGC = {
+    nodeTypes: {
+        empty: 0o40000,
+        caseobj: 0o1,
+        list: 0o10000,
+        aggregate: 0o20000,
+        tree: 0o100000,
+    },
+    segmentList() {
+        return Module._logo_gc_debug_segment_list();
+    },
+    inspect(address) {
+        return {
+            address,
+            id: Module._logo_gc_debug_node_id(address),
+            type: Module._logo_gc_debug_node_type(address),
+            car: Module._logo_gc_debug_node_car(address),
+            cdr: Module._logo_gc_debug_node_cdr(address),
+            object: Module._logo_gc_debug_node_obj(address),
+            next: Module._logo_gc_debug_node_next(address),
+            generation: Module._logo_gc_debug_node_generation(address),
+            mark: Module._logo_gc_debug_node_mark(address),
+        };
+    },
+    dumpNodes() {
+        const nodes = [];
+        for (let segment = this.segmentList(); segment;
+             segment = Module._logo_gc_debug_segment_next(segment)) {
+            const size = Module._logo_gc_debug_segment_size(segment);
+            for (let index = 0; index < size; index++) {
+                nodes.push(this.inspect(
+                    Module._logo_gc_debug_segment_node(segment, index)
+                ));
+            }
+        }
+        console.table(nodes);
+        return nodes;
+    },
+    pcons(address, seen = new Set()) {
+        if (!address || seen.has(address)) return;
+        seen.add(address);
+        const node = this.inspect(address);
+        console.log(node);
+        if (node.type === -1 || (node.type & this.nodeTypes.empty)) return;
+        if (node.type & this.nodeTypes.tree) this.pcons(node.object, seen);
+        if (node.type & (this.nodeTypes.list | this.nodeTypes.aggregate)) {
+            this.pcons(node.car, seen);
+            this.pcons(node.cdr, seen);
+        }
+        if (node.type & this.nodeTypes.caseobj) this.pcons(node.car, seen);
+    },
+};
+if (typeof globalThis !== 'undefined') globalThis.logoGC = Module.logoGC;
+
 Module.preRun = () => {
+    if (typeof document === 'undefined') return;
     const PREFIX = "/share/ucblogo";
     ENV.LOGOLIB = PREFIX + "/logolib";
     ENV.LOGOHELP = PREFIX + "/helpfiles";
@@ -150,6 +202,7 @@ const BLON = {
     }
 };
 Module.FS_runjs_getChar_buffer_append_obj = (obj) => {
+    if (typeof document === 'undefined') return;
     // Module.FS_runjs_getChar_buffer
     //     .push(...intArrayFromString(BLON.stringify(obj), true));
     // Module.FS_runjs_getChar_buffer.push(10);
@@ -159,12 +212,14 @@ Module.FS_runjs_getChar_buffer_append_obj = (obj) => {
     document.dispatchEvent(new CustomEvent("getcharready"));
 }
 Module.FS_runjs_getChar_buffer_append_str = (str) => {
+    if (typeof document === 'undefined') return;
     let chars = str.split("");
     chars.push("\n");
     Module.FS_runjs_getChar_buffer.push(...chars);
     document.dispatchEvent(new CustomEvent("getcharready"));
 }
 Module.runjs = (expr) => {
+    if (typeof document === 'undefined') return;
     let r;
     try {
         r = eval(expr);
@@ -190,39 +245,27 @@ Module.graphics.pen_info = {
     fntsz: 12,
     mode: 'normal',
 };
-Module.graphics.lastclick = { offsetX: 0, offsetY: 0, button: 0 };
-Module.graphics.lastmove = { offsetX: 0, offsetY: 0, button: 0 };
+// Module.graphics.lastclick = { offsetX: 0, offsetY: 0, button: 0 };
+// Module.graphics.lastmove = { offsetX: 0, offsetY: 0, button: 0 };
 Module.graphics.graphics_init = () => {
+    if (typeof document === 'undefined') return;
     const g = Module.graphics;
     // console.log("graphics_init");
     g.clear_screen();
     g.masknum = 0;
     const ld = document.getElementById('logoDrawing');
     Module.graphics.set_back_ground(0);
-    ld.addEventListener('mousemove', (evt) => {
-        g.lastmove = evt;
-    });
     Module.graphics.buttonp = false;
-    const handleMouseDown = (evt) => {
-        g.lastclick = evt;
-        Module.graphics.buttonp = true;
-        Module.ccall('mouse_down', 'void', [], []);
-        evt.preventDefault();
-        return false;
-    };
+    ld.addEventListener('mousedown', Module.onmousedown, { capture: true });
+    ld.addEventListener('mouseup', Module.onmouseup, { capture: true });
+    ld.addEventListener('mousemove', Module.onmousemove);
+    // todo touch support
     // if (document.ontouchstart) {
     // ld.addEventListener('touchstart', handleMouseDown, { capture: true });
-    // } else {
-    ld.addEventListener('mousedown', handleMouseDown, { capture: true });
-    // }
-    ld.addEventListener('mouseup', (evt) => {
-        Module.graphics.buttonp = false;
-        evt.preventDefault();
-        return false;
-    }, { capture: true });
+    // todo right-button support
     ld.addEventListener('contextmenu', (evt) => {
+        // suppress context menu
         evt.preventDefault();
-        return false;
     }, { capture: true });
 };
 Module.graphics.prepare_to_draw = () => {
@@ -397,8 +440,8 @@ Module.graphics.split_screen = () => {
     if (Module.graphics.mode == 'split_screen') return;
     Module.graphics.mode = 'split_screen';
     // console.log(`split_screen ${[]}`);
-    document.getElementById('logoDrawing')
-        .style.setProperty('display', 'block');
+    document.getElementById('svgContainer')
+        .style.setProperty('display', 'flex');
     document.getElementById('logoInputContainer')
         .style.setProperty('display', 'flex');
     window.dispatchEvent(new Event('resize'));
@@ -407,7 +450,7 @@ Module.graphics.text_screen = () => {
     if (Module.graphics.mode == 'text_screen') return;
     Module.graphics.mode = 'text_screen';
     console.log(`text_screen ${[]}`);
-    document.getElementById('logoDrawing')
+    document.getElementById('svgContainer')
         .style.setProperty('display', 'none');
     document.getElementById('logoInputContainer')
         .style.setProperty('display', 'flex');
@@ -518,18 +561,14 @@ Module.graphics.filled_add_point = (x, y) => {
 Module.graphics.filled_end = () => {
     delete Module.graphics.filled_poly;
 }
-Module.graphics.web_get_buttonp = () => {
-    return Module.graphics.buttonp;
-}
-Module.graphics.web_get_button = () => {
-    const b = Module.graphics.lastclick?.button;
-    if (b != undefined) {
-        delete Module.graphics.lastclick;
-        if (b == 0) return 1;
-        if (b == 1) return 3;
-        if (b == 2) return 2;
-    }
-    return 0;
+// Module.graphics.web_get_buttonp = () => {
+//     return Module.graphics.buttonp;
+// }
+Module.graphics.web_get_button = (b) => {
+    if (b == 0) return 1;
+    if (b == 1) return 3;
+    if (b == 2) return 2;
+    console.error("invalid mouse button");
 }
 Module.graphics.screenToSVGCoords = (screenX, screenY) => {
     const ld = document.getElementById('logoDrawing');
@@ -537,24 +576,26 @@ Module.graphics.screenToSVGCoords = (screenX, screenY) => {
     p.x = screenX;
     p.y = screenY;
     const svgp = p.matrixTransform(ld.getScreenCTM().inverse());
+    svgp.x -= 320;
+    svgp.y = -svgp.y + 240 
     return svgp;
 }
-Module.graphics.web_get_mouse_x = () => {
-    const { offsetX, offsetY } = Module.graphics.lastmove;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
-}
-Module.graphics.web_get_mouse_y = () => {
-    const { clientX, clientY } = Module.graphics.lastmove;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
-}
-Module.graphics.web_get_click_x = () => {
-    const { clientX, clientY } = Module.graphics.lastclick;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
-}
-Module.graphics.web_get_click_y = () => {
-    const { clientX, clientY } = Module.graphics.lastclick;
-    return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
-}
+// Module.graphics.web_get_mouse_x = () => {
+//     const { offsetX, offsetY } = Module.graphics.lastmove;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
+// }
+// Module.graphics.web_get_mouse_y = () => {
+//     const { clientX, clientY } = Module.graphics.lastmove;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
+// }
+// Module.graphics.web_get_click_x = () => {
+//     const { clientX, clientY } = Module.graphics.lastclick;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).x - 320;
+// }
+// Module.graphics.web_get_click_y = () => {
+//     const { clientX, clientY } = Module.graphics.lastclick;
+//     return Module.graphics.screenToSVGCoords(clientX, clientY).y * -1 + 240;
+// }
 Module.upgradeLogoElements = () => {
     class LogoElement extends HTMLElement {
         static observedAttributes = ['id', 'class', 'style', 'hidden', 'accesskey', 'checked', 'data-logo', 'disabled', 'draggable', 'height', 'loop', 'controls', 'name', 'open', 'readonly', 'reversed', 'rows', 'selected', 'size', 'slot', 'value', 'width', 'wrap'];
@@ -674,6 +715,9 @@ Module.commandHistory = [];
 Module.commandHistoryIdx = -1;
 Module.currentCommand = null;
 Module.handleKeyDown = evt => {
+    // for keyact
+    Module.onkeydown(evt);
+
     const inputText = document.getElementById('logoInputText');
     if (evt.key == "ArrowDown") {
         evt.preventDefault();
@@ -700,7 +744,7 @@ Module.handleKeyDown = evt => {
     }
 };
 Module.makeSprite = name => {
-    debugger;
+    // debugger;
     const drawing = document.getElementById('logoDrawing');
     const defs = Module.graphics.getSpriteDefs();
     const drawingContainer = document.getElementById('logoDrawingContainer');
@@ -786,7 +830,211 @@ Module.softKeyDown = (event, key) => {
     targettext.focus();
     targettext.setSelectionRange(selectionStart+1, selectionStart+1);
     return false;
-}// end include: pre.js
+}
+
+// FIXME add options for objective logo and object serializer 
+Module.LogoNodeProto = {
+    baseaddr: null,
+    eq: function(node) {
+        return this.baseaddr === node.baseaddr;
+    },
+    ne: function(node) {
+        return !this.eq(node);
+    },
+    get car() {
+        return Module.LogoNode(
+            Module.getValue(this.baseaddr + 6 * 4, 'i32')
+        );
+    },
+    get cdr() {
+        return Module.LogoNode(
+            Module.getValue(this.baseaddr + 7 * 4, 'i32')
+        );
+    },
+    get obj() {
+        return Module.LogoNode(
+            Module.getValue(this.baseaddr + 8 * 4, 'i32')
+        );
+    },
+    get cadr() { return this.cdr.car },
+    get object__caseobj() { return this.cdr },
+    get valnode__object() { return this.cadr.cdr },
+    get valnode__caseobj() { return this.valnode__object.object__caseobj },
+};
+
+Module.LogoNode = (baseaddr)=>{
+    const o = Object.create(Module.LogoNodeProto)
+    o.baseaddr = baseaddr;
+    return o;
+};
+
+// Non-reentrant mousedown
+// Module.safe_mouse_down = (evt) => {
+// 	const inside_gc = getValue(Module['_inside_gc'], 'i32');
+// 	const in_eval_save = getValue(Module['_in_eval_save'], 'i32');
+// 	const int_during_gc = getValue(Module['_int_during_gc'], 'i32');
+// 	const inside_evaluator = getValue(Module['_inside_evaluator'], 'i32');
+// 	const ptr_Buttonact = getValue(Module['_Buttonact'], 'i32');
+//     const Buttonact = Module.LogoNode(ptr_Buttonact);
+// 	const ptr_Unbound = getValue(Module['_Unbound'], 'i32');
+//     const UNBOUND = Module.LogoNode(ptr_Unbound);
+//     const NIL = Module.LogoNode(0);
+//     const line = Buttonact.valnode__caseobj;
+
+//     evt.preventDefault();
+//     Module.graphics.lastclick = evt;
+//     Module.graphics.buttonp = true;
+    
+//     const n = evt.n;
+//     if (typeof evt.n === 'undefined') evt.n = 10;
+//     evt.n--;
+//     if (evt.n < 0) {
+//         console.warn('mousedown failed');
+//         return;
+//     }
+
+//     if (Asyncify.state === 0 && getValue(Module['_LOGO_GIL']) === 0) {
+//         setValue(Module['_LOGO_GIL'], 1, 'i32');
+//         Module.ccall('mouse_down', 'void', [], []);
+//         setValue(Module['_LOGO_GIL'], 0, 'i32');
+//     }
+//     else if  (inside_gc || in_eval_save)
+// 	{
+// 		if (int_during_gc == 0)
+// 			setValue(Module['_int_during_gc'], 3, 'i32');
+// 	}
+// 	else if (line.ne(UNBOUND) && line.ne(NIL)) {
+//         if (inside_evaluator) {
+//             setValue(Module['_eval_buttonact'], line, 'i32');
+//             const timeout = Module.WEB_WAIT_TIMEOUT_ID;
+//             if (timeout) {
+//                 Module.WEB_WAIT_TIMEOUT_ID = 0;
+//                 clearTimeout(timeout);
+//                 Module.WEB_WAIT_WAKEUP();
+//             }
+//         }
+//         else {
+//                 console.warn('mousedown deferred');
+//                 setTimeout(()=>Module.safe_mouse_down(evt), 5);
+//         }
+//     }
+// };
+
+class UIEventQueue extends Array {
+    unshift(...items) {
+        if (this.length < 10) {
+            return super.unshift(...items);
+        }
+        else {
+            console.warn('uievents queue overflow')
+        }
+    }
+}
+
+Module.uievents = new UIEventQueue();
+
+const EVT_T_MOUSEDOWN = 0;
+const EVT_T_MOUSEUP = 1;
+const EVT_T_CLICK = 2; 
+const EVT_T_MOUSEMOVE = 3;
+const EVT_T_KEYDOWN = 4;
+const EVT_T_KEYUP = 5;
+const EVT_T_KEYPRESS = 6;
+const EVT_T_PAUSELOGO = 7;
+const EVT_T_STOPLOGO = 8;
+
+ Module.uieventypes = {
+    'mousedown': EVT_T_MOUSEDOWN,
+    'mouseup': EVT_T_MOUSEUP,
+    'click': EVT_T_CLICK, 
+    'mousemove': EVT_T_MOUSEMOVE,
+    'keydown': EVT_T_KEYDOWN,
+    'keyup': EVT_T_KEYUP,
+    'keypress': EVT_T_KEYPRESS,
+    // TODO these can be simple flags, and should be higher
+    // priority than ui events
+    'pauselogo': 7,
+    'stoplogo': 8,
+}
+
+Module.gdk_keycodes = {
+   'ArrowDown': 0xFF54,
+   'ArrowLeft': 0xFF51,
+   'ArrowRight': 0xFF53,
+   'ArrowUp': 0xFF52,
+}
+
+Module.run_evaluator = () => {
+    if (Asyncify.state === 0 
+        && getValue(Module['_LOGO_GIL']) === 0
+    ) {
+        Module._run_evaluator(false);
+    }
+    else {
+        const timeout = Module.WEB_WAIT_TIMEOUT_ID;
+        if (timeout) {
+            Module.WEB_WAIT_TIMEOUT_ID = 0;
+            clearTimeout(timeout);
+            Module.WEB_WAIT_WAKEUP();
+        }
+    }
+}
+
+Module.onmouseevt = (evt, type) => {
+    evt.preventDefault();
+    const {x,y} = (Module.graphics
+        .screenToSVGCoords(evt.clientX, evt.clientY));
+    Module.uievents.unshift({
+        type: Module.uieventypes[type],   
+        button: Module.graphics.web_get_button(evt.button),
+        x, y
+    });
+    Module.run_evaluator(false);
+    return false;
+}
+
+Module.onmousedown = (evt) => {
+    Module.graphics.lastclick = evt;
+    Module.graphics.buttonp = true;
+    return Module.onmouseevt(evt, 'mousedown');
+}
+
+Module.onmouseup = (evt) => {
+    Module.graphics.buttonp = false;
+    return Module.onmouseevt(evt, 'mouseup');
+}
+
+Module.onmousemove = (evt) => {
+    Module.graphics.lastmove = evt;
+    return Module.onmouseevt(evt, 'mousemove');
+}
+
+Module.onkeydown = (evt) => {
+    // evt.preventDefault();
+    Module.uievents.unshift({
+        type: Module.uieventypes['keydown'],   
+        key: Module.gdk_keycodes[evt.key] || evt.key.charCodeAt(0),
+    });
+    Module.run_evaluator(false);
+    return false;
+}
+
+Module.onpauselogo = (evt) => {
+    if (getValue(Module['_LOGO_GIL']) === 0) return;
+    Module.uievents.splice(0, Module.uievents.length, {
+        type: EVT_T_PAUSELOGO
+    });
+    Module.run_evaluator(false);
+}
+
+Module.onstoplogo = (evt) => {
+    if (getValue(Module['_LOGO_GIL']) === 0) return;
+    Module.uievents.splice(0, Module.uievents.length, {
+        type: EVT_T_STOPLOGO
+    });
+    Module.run_evaluator(false);
+}
+ // end include: pre.js
 // include: /home/jeff/emsdk/upstream/emscripten/src/emrun_prejs.js
 /**
  * @license
@@ -836,63 +1084,6 @@ function locateFile(path) {
 // Hooks that are implemented differently in different runtime environments.
 var readAsync, readBinary;
 
-if (ENVIRONMENT_IS_NODE) {
-  if (typeof process == 'undefined' || !process.release || process.release.name !== 'node') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-
-  var nodeVersion = process.versions.node;
-  var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  var minVersion = 160000;
-  if (numericVersion < 160000) {
-    throw new Error('This emscripten-generated code requires node v16.0.0 (detected v' + nodeVersion + ')');
-  }
-
-  // These modules will usually be used on Node.js. Load them eagerly to avoid
-  // the complexity of lazy-loading.
-  var fs = require('fs');
-  var nodePath = require('path');
-
-  scriptDirectory = __dirname + '/';
-
-// include: node_shell_read.js
-readBinary = (filename) => {
-  // We need to re-wrap `file://` strings to URLs.
-  filename = isFileURI(filename) ? new URL(filename) : filename;
-  var ret = fs.readFileSync(filename);
-  assert(Buffer.isBuffer(ret));
-  return ret;
-};
-
-readAsync = async (filename, binary = true) => {
-  // See the comment in the `readBinary` function.
-  filename = isFileURI(filename) ? new URL(filename) : filename;
-  var ret = fs.readFileSync(filename, binary ? undefined : 'utf8');
-  assert(binary ? Buffer.isBuffer(ret) : typeof ret == 'string');
-  return ret;
-};
-// end include: node_shell_read.js
-  if (!Module['thisProgram'] && process.argv.length > 1) {
-    thisProgram = process.argv[1].replace(/\\/g, '/');
-  }
-
-  arguments_ = process.argv.slice(2);
-
-  if (typeof module != 'undefined') {
-    module['exports'] = Module;
-  }
-
-  quit_ = (status, toThrow) => {
-    process.exitCode = status;
-    throw toThrow;
-  };
-
-} else
-if (ENVIRONMENT_IS_SHELL) {
-
-  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-
-} else
-
 // Note that this includes Node.js workers when relevant (pthreads is enabled).
 // Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and
 // ENVIRONMENT_IS_NODE.
@@ -914,12 +1105,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     scriptDirectory = scriptDirectory.slice(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
   }
 
-  if (!(typeof window == 'object' || typeof WorkerGlobalScope != 'undefined')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-
   {
 // include: web_or_worker_shell_read.js
 readAsync = async (url) => {
-    assert(!isFileURI(url), "readAsync does not work with file:// URLs");
     var response = await fetch(url, { credentials: 'same-origin' });
     if (response.ok) {
       return response.arrayBuffer();
@@ -930,7 +1118,6 @@ readAsync = async (url) => {
   }
 } else
 {
-  throw new Error('environment detection error');
 }
 
 var out = Module['print'] || console.log.bind(console);
@@ -941,46 +1128,17 @@ Object.assign(Module, moduleOverrides);
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used.
 moduleOverrides = null;
-checkIncomingModuleAPI();
 
 // Emit code to handle expected values on the Module object. This applies Module.x
 // to the proper local x. This has two benefits: first, we only emit it if it is
 // expected to arrive, and second, by using a local everywhere else that can be
 // minified.
 
-if (Module['arguments']) arguments_ = Module['arguments'];legacyModuleProp('arguments', 'arguments_');
+if (Module['arguments']) arguments_ = Module['arguments'];
 
-if (Module['thisProgram']) thisProgram = Module['thisProgram'];legacyModuleProp('thisProgram', 'thisProgram');
+if (Module['thisProgram']) thisProgram = Module['thisProgram'];
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
-// Assertions on removed incoming Module JS APIs.
-assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
-assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
-assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
-assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
-assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
-legacyModuleProp('asm', 'wasmExports');
-legacyModuleProp('readAsync', 'readAsync');
-legacyModuleProp('readBinary', 'readBinary');
-legacyModuleProp('setWindowTitle', 'setWindowTitle');
-var IDBFS = 'IDBFS is no longer included by default; build with -lidbfs.js';
-var PROXYFS = 'PROXYFS is no longer included by default; build with -lproxyfs.js';
-var WORKERFS = 'WORKERFS is no longer included by default; build with -lworkerfs.js';
-var FETCHFS = 'FETCHFS is no longer included by default; build with -lfetchfs.js';
-var ICASEFS = 'ICASEFS is no longer included by default; build with -licasefs.js';
-var JSFILEFS = 'JSFILEFS is no longer included by default; build with -ljsfilefs.js';
-var OPFS = 'OPFS is no longer included by default; build with -lopfs.js';
-
-var NODEFS = 'NODEFS is no longer included by default; build with -lnodefs.js';
-
-assert(!ENVIRONMENT_IS_WORKER, 'worker environment detected but not enabled at build time.  Add `worker` to `-sENVIRONMENT` to enable.');
-
-assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time.  Add `shell` to `-sENVIRONMENT` to enable.');
-
 // end include: shell.js
 
 // include: preamble.js
@@ -994,11 +1152,7 @@ assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at bui
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-var wasmBinary = Module['wasmBinary'];legacyModuleProp('wasmBinary', 'wasmBinary');
-
-if (typeof WebAssembly != 'object') {
-  err('no native wasm support detected');
-}
+var wasmBinary = Module['wasmBinary'];
 
 // Wasm globals
 
@@ -1024,18 +1178,11 @@ var EXITSTATUS;
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) {
-    abort('Assertion failed' + (text ? ': ' + text : ''));
+    // This build was created without ASSERTIONS defined.  `assert()` should not
+    // ever be called in this configuration but in case there are callers in
+    // the wild leave this simple abort() implementation here for now.
+    abort(text);
   }
-}
-
-// We used to include malloc/free by default in the past. Show a helpful error in
-// builds with assertions.
-function _malloc() {
-  abort('malloc() called but not included in the build - add `_malloc` to EXPORTED_FUNCTIONS');
-}
-function _free() {
-  // Show a helpful error since we used to include free by default in the past.
-  abort('free() called but not included in the build - add `_free` to EXPORTED_FUNCTIONS');
 }
 
 // Memory management
@@ -1076,176 +1223,10 @@ var isFileURI = (filename) => filename.startsWith('file://');
 
 // include: runtime_shared.js
 // include: runtime_stack_check.js
-// Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
-function writeStackCookie() {
-  var max = _emscripten_stack_get_end();
-  assert((max & 3) == 0);
-  // If the stack ends at address zero we write our cookies 4 bytes into the
-  // stack.  This prevents interference with SAFE_HEAP and ASAN which also
-  // monitor writes to address zero.
-  if (max == 0) {
-    max += 4;
-  }
-  // The stack grow downwards towards _emscripten_stack_get_end.
-  // We write cookies to the final two words in the stack and detect if they are
-  // ever overwritten.
-  HEAPU32[((max)>>2)] = 0x02135467;
-  HEAPU32[(((max)+(4))>>2)] = 0x89BACDFE;
-  // Also test the global address 0 for integrity.
-  HEAPU32[((0)>>2)] = 1668509029;
-}
-
-function checkStackCookie() {
-  if (ABORT) return;
-  var max = _emscripten_stack_get_end();
-  // See writeStackCookie().
-  if (max == 0) {
-    max += 4;
-  }
-  var cookie1 = HEAPU32[((max)>>2)];
-  var cookie2 = HEAPU32[(((max)+(4))>>2)];
-  if (cookie1 != 0x02135467 || cookie2 != 0x89BACDFE) {
-    abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords 0x89BACDFE and 0x2135467, but received ${ptrToString(cookie2)} ${ptrToString(cookie1)}`);
-  }
-  // Also test the global address 0 for integrity.
-  if (HEAPU32[((0)>>2)] != 0x63736d65 /* 'emsc' */) {
-    abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
-  }
-}
 // end include: runtime_stack_check.js
 // include: runtime_exceptions.js
 // end include: runtime_exceptions.js
 // include: runtime_debug.js
-// Endianness check
-(() => {
-  var h16 = new Int16Array(1);
-  var h8 = new Int8Array(h16.buffer);
-  h16[0] = 0x6373;
-  if (h8[0] !== 0x73 || h8[1] !== 0x63) throw 'Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)';
-})();
-
-if (Module['ENVIRONMENT']) {
-  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-}
-
-function legacyModuleProp(prop, newName, incoming=true) {
-  if (!Object.getOwnPropertyDescriptor(Module, prop)) {
-    Object.defineProperty(Module, prop, {
-      configurable: true,
-      get() {
-        let extra = incoming ? ' (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)' : '';
-        abort(`\`Module.${prop}\` has been replaced by \`${newName}\`` + extra);
-
-      }
-    });
-  }
-}
-
-function consumedModuleProp(prop) {
-  if (!Object.getOwnPropertyDescriptor(Module, prop)) {
-    Object.defineProperty(Module, prop, {
-      configurable: true,
-      set() {
-        abort(`Attempt to set \`Module.${prop}\` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js'`);
-
-      }
-    });
-  }
-}
-
-function ignoredModuleProp(prop) {
-  if (Object.getOwnPropertyDescriptor(Module, prop)) {
-    abort(`\`Module.${prop}\` was supplied but \`${prop}\` not included in INCOMING_MODULE_JS_API`);
-  }
-}
-
-// forcing the filesystem exports a few things by default
-function isExportedByForceFilesystem(name) {
-  return name === 'FS_createPath' ||
-         name === 'FS_createDataFile' ||
-         name === 'FS_createPreloadedFile' ||
-         name === 'FS_unlink' ||
-         name === 'addRunDependency' ||
-         // The old FS has some functionality that WasmFS lacks.
-         name === 'FS_createLazyFile' ||
-         name === 'FS_createDevice' ||
-         name === 'removeRunDependency';
-}
-
-/**
- * Intercept access to a global symbol.  This enables us to give informative
- * warnings/errors when folks attempt to use symbols they did not include in
- * their build, or no symbols that no longer exist.
- */
-function hookGlobalSymbolAccess(sym, func) {
-  if (typeof globalThis != 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
-    Object.defineProperty(globalThis, sym, {
-      configurable: true,
-      get() {
-        func();
-        return undefined;
-      }
-    });
-  }
-}
-
-function missingGlobal(sym, msg) {
-  hookGlobalSymbolAccess(sym, () => {
-    warnOnce(`\`${sym}\` is not longer defined by emscripten. ${msg}`);
-  });
-}
-
-missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
-missingGlobal('asm', 'Please use wasmExports instead');
-
-function missingLibrarySymbol(sym) {
-  hookGlobalSymbolAccess(sym, () => {
-    // Can't `abort()` here because it would break code that does runtime
-    // checks.  e.g. `if (typeof SDL === 'undefined')`.
-    var msg = `\`${sym}\` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line`;
-    // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
-    // library.js, which means $name for a JS name with no prefix, or name
-    // for a JS name like _name.
-    var librarySymbol = sym;
-    if (!librarySymbol.startsWith('_')) {
-      librarySymbol = '$' + sym;
-    }
-    msg += ` (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='${librarySymbol}')`;
-    if (isExportedByForceFilesystem(sym)) {
-      msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
-    }
-    warnOnce(msg);
-  });
-
-  // Any symbol that is not included from the JS library is also (by definition)
-  // not exported on the Module object.
-  unexportedRuntimeSymbol(sym);
-}
-
-function unexportedRuntimeSymbol(sym) {
-  if (!Object.getOwnPropertyDescriptor(Module, sym)) {
-    Object.defineProperty(Module, sym, {
-      configurable: true,
-      get() {
-        var msg = `'${sym}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)`;
-        if (isExportedByForceFilesystem(sym)) {
-          msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
-        }
-        abort(msg);
-      }
-    });
-  }
-}
-
-var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
-
-// Used by XXXXX_DEBUG settings to output debug messages.
-function dbg(...args) {
-  if (!runtimeDebug && typeof runtimeDebug != 'undefined') return;
-  // TODO(sbc): Make this configurable somehow.  Its not always convenient for
-  // logging to show up as warnings.
-  console.warn(...args);
-}
 // end include: runtime_debug.js
 // include: memoryprofiler.js
 // end include: memoryprofiler.js
@@ -1266,15 +1247,6 @@ function updateMemoryViews() {
 }
 
 // end include: runtime_shared.js
-assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
-
-assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
-       'JS engine does not provide full typed array support');
-
-// If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
-assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
-assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
-
 function preRun() {
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
@@ -1282,15 +1254,11 @@ function preRun() {
       addOnPreRun(Module['preRun'].shift());
     }
   }
-  consumedModuleProp('preRun');
   callRuntimeCallbacks(onPreRuns);
 }
 
 function initRuntime() {
-  assert(!runtimeInitialized);
   runtimeInitialized = true;
-
-  checkStackCookie();
 
   if (!Module['noFSInit'] && !FS.initialized) FS.init();
 TTY.init();
@@ -1301,13 +1269,10 @@ TTY.init();
 }
 
 function preMain() {
-  checkStackCookie();
   
 }
 
 function exitRuntime() {
-  assert(!runtimeExited);
-  checkStackCookie();
   ___funcs_on_exit(); // Native atexit() functions
   callRuntimeCallbacks(onExits);
 FS.quit();
@@ -1317,7 +1282,6 @@ IDBFS.quit();
 }
 
 function postRun() {
-  checkStackCookie();
 
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
@@ -1325,7 +1289,6 @@ function postRun() {
       addOnPostRun(Module['postRun'].shift());
     }
   }
-  consumedModuleProp('postRun');
 
   callRuntimeCallbacks(onPostRuns);
 }
@@ -1339,15 +1302,9 @@ function postRun() {
 // the dependencies are met.
 var runDependencies = 0;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
-var runDependencyTracking = {};
-var runDependencyWatcher = null;
 
 function getUniqueRunDependency(id) {
-  var orig = id;
-  while (1) {
-    if (!runDependencyTracking[id]) return id;
-    id = orig + Math.random();
-  }
+  return id;
 }
 
 function addRunDependency(id) {
@@ -1355,33 +1312,6 @@ function addRunDependency(id) {
 
   Module['monitorRunDependencies']?.(runDependencies);
 
-  if (id) {
-    assert(!runDependencyTracking[id]);
-    runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
-      // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(() => {
-        if (ABORT) {
-          clearInterval(runDependencyWatcher);
-          runDependencyWatcher = null;
-          return;
-        }
-        var shown = false;
-        for (var dep in runDependencyTracking) {
-          if (!shown) {
-            shown = true;
-            err('still waiting on run dependencies:');
-          }
-          err(`dependency: ${dep}`);
-        }
-        if (shown) {
-          err('(end of list)');
-        }
-      }, 10000);
-    }
-  } else {
-    err('warning: run dependency added without ID');
-  }
 }
 
 function removeRunDependency(id) {
@@ -1389,17 +1319,7 @@ function removeRunDependency(id) {
 
   Module['monitorRunDependencies']?.(runDependencies);
 
-  if (id) {
-    assert(runDependencyTracking[id]);
-    delete runDependencyTracking[id];
-  } else {
-    err('warning: run dependency removed without ID');
-  }
   if (runDependencies == 0) {
-    if (runDependencyWatcher !== null) {
-      clearInterval(runDependencyWatcher);
-      runDependencyWatcher = null;
-    }
     if (dependenciesFulfilled) {
       var callback = dependenciesFulfilled;
       dependenciesFulfilled = null;
@@ -1418,6 +1338,8 @@ function abort(what) {
   err(what);
 
   ABORT = true;
+
+  what += '. Build with -sASSERTIONS for more info.';
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
@@ -1441,15 +1363,74 @@ function abort(what) {
   throw e;
 }
 
-function createExportWrapper(name, nargs) {
+// `abortWrapperDepth` counts the recursion level of the wrapper function so
+// that we only handle exceptions at the top level letting the exception
+// mechanics work uninterrupted at the inner level.  Additionally,
+// `abortWrapperDepth` is also manually incremented in callMain so that we know
+// to ignore exceptions from there since they're handled by callMain directly.
+var abortWrapperDepth = 0;
+
+function makeAbortWrapper(original) {
   return (...args) => {
-    assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
-    assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
-    var f = wasmExports[name];
-    assert(f, `exported native function \`${name}\` not found`);
-    // Only assert for too many arguments. Too few can be valid since the missing arguments will be zero filled.
-    assert(args.length <= nargs, `native function \`${name}\` called with ${args.length} args but expects ${nargs}`);
-    return f(...args);
+    // Don't allow this function to be called if we're aborted!
+    if (ABORT) {
+      throw 'program has already aborted!';
+    }
+
+    abortWrapperDepth++;
+    try {
+      return original(...args);
+    } catch (e) {
+      if (
+        ABORT // rethrow exception if abort() was called in the original function call above
+        || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
+        || e === Infinity // EXCEPTION_STACK_TRACES=0 will throw Infinity
+        || e === 'unwind'
+      ) {
+        throw e;
+      }
+
+      abort('unhandled exception: ' + [e, e.stack]);
+    }
+    finally {
+      abortWrapperDepth--;
+    }
+  }
+}
+
+// Instrument all the exported functions to:
+// - abort if an unhandled exception occurs
+// - throw an exception if someone tries to call them after the program has aborted
+// See settings.ABORT_ON_WASM_EXCEPTIONS for more info.
+function instrumentWasmExportsWithAbort(exports) {
+  // Override the exported functions with the wrappers and copy over any other symbols
+  var instExports = {};
+  for (var name in exports) {
+    var original = exports[name];
+    if (typeof original == 'function') {
+      instExports[name] = makeAbortWrapper(original);
+    } else {
+      instExports[name] = original;
+    }
+  }
+
+  return instExports;
+}
+
+function instrumentWasmTableWithAbort() {
+  // Override the wasmTable get function to return the wrappers
+  var realGet = wasmTable.get;
+  var wrapperCache = {};
+  wasmTable.get = (i) => {
+    var func = realGet.call(wasmTable, i);
+    var cached = wrapperCache[i];
+    if (!cached || cached.func !== func) {
+      cached = wrapperCache[i] = {
+        func,
+        wrapper: makeAbortWrapper(func)
+      }
+    }
+    return cached.wrapper;
   };
 }
 
@@ -1493,23 +1474,12 @@ async function instantiateArrayBuffer(binaryFile, imports) {
   } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
 
-    // Warn on some common problems.
-    if (isFileURI(wasmBinaryFile)) {
-      err(`warning: Loading from a file URI (${wasmBinaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
-    }
     abort(reason);
   }
 }
 
 async function instantiateAsync(binary, binaryFile, imports) {
   if (!binary && typeof WebAssembly.instantiateStreaming == 'function'
-      // Avoid instantiateStreaming() on Node.js environment for now, as while
-      // Node.js v18.1.0 implements it, it does not have a full fetch()
-      // implementation yet.
-      //
-      // Reference:
-      //   https://github.com/emscripten-core/emscripten/pull/16917
-      && !ENVIRONMENT_IS_NODE
      ) {
     try {
       var response = fetch(binaryFile, { credentials: 'same-origin' });
@@ -1527,10 +1497,6 @@ async function instantiateAsync(binary, binaryFile, imports) {
 }
 
 function getWasmImports() {
-  // instrumenting imports is used in asyncify in two ways: to add assertions
-  // that check for proper import use, and for ASYNCIFY=2 we use them to set up
-  // the Promise API on the import side.
-  Asyncify.instrumentWasmImports(wasmImports);
   // prepare imports
   return {
     'env': wasmImports,
@@ -1550,16 +1516,18 @@ async function createWasm() {
 
     wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 
+    wasmExports = instrumentWasmExportsWithAbort(wasmExports);
+
     
 
     wasmMemory = wasmExports['memory'];
     
-    assert(wasmMemory, 'memory not found in wasm exports');
     updateMemoryViews();
 
     wasmTable = wasmExports['__indirect_function_table'];
     
-    assert(wasmTable, 'table not found in wasm exports');
+
+    instrumentWasmTableWithAbort();
 
     removeRunDependency('wasm-instantiate');
     return wasmExports;
@@ -1568,15 +1536,9 @@ async function createWasm() {
   addRunDependency('wasm-instantiate');
 
   // Prefer streaming instantiation if available.
-  // Async compilation can be confusing when an error on the page overwrites Module
-  // (for example, if the order of elements is wrong, and the one defining Module is
-  // later), so we save Module and check it later.
-  var trueModule = Module;
   function receiveInstantiationResult(result) {
     // 'result' is a ResultObject object which has both the module and instance.
     // receiveInstance() will swap in the exports (to Module.asm) so they can be called
-    assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
-    trueModule = null;
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
     // When the regression is fixed, can restore the above PTHREADS-enabled path.
     return receiveInstance(result['instance']);
@@ -1592,15 +1554,10 @@ async function createWasm() {
   // path.
   if (Module['instantiateWasm']) {
     return new Promise((resolve, reject) => {
-      try {
         Module['instantiateWasm'](info, (mod, inst) => {
           receiveInstance(mod, inst);
           resolve(mod.exports);
         });
-      } catch(e) {
-        err(`Module.instantiateWasm callback failed with error: ${e}`);
-        reject(e);
-      }
     });
   }
 
@@ -1661,13 +1618,6 @@ async function createWasm() {
 
   var noExitRuntime = Module['noExitRuntime'] || false;
 
-  var ptrToString = (ptr) => {
-      assert(typeof ptr === 'number');
-      // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
-      ptr >>>= 0;
-      return '0x' + ptr.toString(16).padStart(8, '0');
-    };
-
   
     /**
      * @param {number} ptr
@@ -1693,14 +1643,8 @@ async function createWasm() {
 
   var stackSave = () => _emscripten_stack_get_current();
 
-  var warnOnce = (text) => {
-      warnOnce.shown ||= {};
-      if (!warnOnce.shown[text]) {
-        warnOnce.shown[text] = 1;
-        if (ENVIRONMENT_IS_NODE) text = 'warning: ' + text;
-        err(text);
-      }
-    };
+  /** @type {WebAssembly.Table} */
+  var wasmTable;
 
   var PATH = {
   isAbs:(path) => path.charAt(0) === '/',
@@ -1764,11 +1708,6 @@ async function createWasm() {
   };
   
   var initRandomFill = () => {
-      // This block is not needed on v19+ since crypto.getRandomValues is builtin
-      if (ENVIRONMENT_IS_NODE) {
-        var nodeCrypto = require('crypto');
-        return (view) => nodeCrypto.randomFillSync(view);
-      }
   
       return (view) => crypto.getRandomValues(view);
     };
@@ -1874,7 +1813,6 @@ async function createWasm() {
         if ((u0 & 0xF0) == 0xE0) {
           u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
         } else {
-          if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte ' + ptrToString(u0) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
           u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
         }
   
@@ -1912,7 +1850,6 @@ async function createWasm() {
     };
   
   var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
-      assert(typeof str === 'string', `stringToUTF8Array expects a string (got ${typeof str})`);
       // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
       // undefined and false each don't write out any bytes.
       if (!(maxBytesToWrite > 0))
@@ -1947,7 +1884,6 @@ async function createWasm() {
           heap[outIdx++] = 0x80 | (u & 63);
         } else {
           if (outIdx + 3 >= endIdx) break;
-          if (u > 0x10FFFF) warnOnce('Invalid Unicode code point ' + ptrToString(u) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).');
           heap[outIdx++] = 0xF0 | (u >> 18);
           heap[outIdx++] = 0x80 | ((u >> 12) & 63);
           heap[outIdx++] = 0x80 | ((u >> 6) & 63);
@@ -1969,35 +1905,6 @@ async function createWasm() {
   var FS_stdin_getChar = () => {
       if (!FS_stdin_getChar_buffer.length) {
         var result = null;
-        if (ENVIRONMENT_IS_NODE) {
-          // we will read data by chunks of BUFSIZE
-          var BUFSIZE = 256;
-          var buf = Buffer.alloc(BUFSIZE);
-          var bytesRead = 0;
-  
-          // For some reason we must suppress a closure warning here, even though
-          // fd definitely exists on process.stdin, and is even the proper way to
-          // get the fd of stdin,
-          // https://github.com/nodejs/help/issues/2136#issuecomment-523649904
-          // This started to happen after moving this logic out of library_tty.js,
-          // so it is related to the surrounding code in some unclear manner.
-          /** @suppress {missingProperties} */
-          var fd = process.stdin.fd;
-  
-          try {
-            bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
-          } catch(e) {
-            // Cross-platform differences: on Windows, reading EOF throws an
-            // exception, but on other OSes, reading EOF returns 0. Uniformize
-            // behavior by treating the EOF exception to return 0.
-            if (e.toString().includes('EOF')) bytesRead = 0;
-            else throw e;
-          }
-  
-          if (bytesRead > 0) {
-            result = buf.slice(0, bytesRead).toString('utf-8');
-          }
-        } else
         if (typeof window != 'undefined' &&
           typeof window.prompt == 'function') {
           // Browser.
@@ -2160,11 +2067,10 @@ async function createWasm() {
   var zeroMemory = (ptr, size) => HEAPU8.fill(0, ptr, ptr + size);
   
   var alignMemory = (size, alignment) => {
-      assert(alignment, "alignment argument is required");
       return Math.ceil(size / alignment) * alignment;
     };
   var mmapAlloc = (size) => {
-      abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
+      abort();
     };
   var MEMFS = {
   ops_table:null,
@@ -2322,7 +2228,7 @@ async function createWasm() {
           }
         },
   lookup(parent, name) {
-          throw new FS.ErrnoError(44);
+          throw MEMFS.doesNotExistError;
         },
   mknod(parent, name, mode, dev) {
           return MEMFS.createNode(parent, name, mode, dev);
@@ -2379,7 +2285,6 @@ async function createWasm() {
           var contents = stream.node.contents;
           if (position >= stream.node.usedBytes) return 0;
           var size = Math.min(stream.node.usedBytes - position, length);
-          assert(size >= 0);
           if (size > 8 && contents.subarray) { // non-trivial, and typed array
             buffer.set(contents.subarray(position, position + size), offset);
           } else {
@@ -2388,8 +2293,6 @@ async function createWasm() {
           return size;
         },
   write(stream, buffer, offset, length, position, canOwn) {
-          // The data buffer should be a typed array view
-          assert(!(buffer instanceof ArrayBuffer));
           // If the buffer is located in main memory (HEAP), and if
           // memory can grow, we can't hold on to references of the
           // memory buffer, as they may get invalidated. That means we
@@ -2404,7 +2307,6 @@ async function createWasm() {
   
           if (buffer.subarray && (!node.contents || node.contents.subarray)) { // This write is from a typed array to a typed array?
             if (canOwn) {
-              assert(position === 0, 'canOwn must imply no weird position inside the file');
               node.contents = buffer.subarray(offset, offset + length);
               node.usedBytes = length;
               return length;
@@ -2488,7 +2390,6 @@ async function createWasm() {
   
   var asyncLoad = async (url) => {
       var arrayBuffer = await readAsync(url);
-      assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
       return new Uint8Array(arrayBuffer);
     };
   asyncLoad.isAsync = true;
@@ -2578,7 +2479,6 @@ async function createWasm() {
         if (typeof indexedDB != 'undefined') return indexedDB;
         var ret = null;
         if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-        assert(ret, 'IDBFS used, but indexedDB not supported');
         return ret;
       },
   DB_VERSION:21,
@@ -2941,154 +2841,6 @@ async function createWasm() {
         });
       },
   };
-  
-  
-  
-    /**
-     * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
-     * emscripten HEAP, returns a copy of that string as a Javascript String object.
-     *
-     * @param {number} ptr
-     * @param {number=} maxBytesToRead - An optional length that specifies the
-     *   maximum number of bytes to read. You can omit this parameter to scan the
-     *   string until the first 0 byte. If maxBytesToRead is passed, and the string
-     *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
-     *   string will cut short at that byte index (i.e. maxBytesToRead will not
-     *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
-     *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
-     *   JS JIT optimizations off, so it is worth to consider consistently using one
-     * @return {string}
-     */
-  var UTF8ToString = (ptr, maxBytesToRead) => {
-      assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
-      return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
-    };
-  
-  var strError = (errno) => UTF8ToString(_strerror(errno));
-  
-  var ERRNO_CODES = {
-      'EPERM': 63,
-      'ENOENT': 44,
-      'ESRCH': 71,
-      'EINTR': 27,
-      'EIO': 29,
-      'ENXIO': 60,
-      'E2BIG': 1,
-      'ENOEXEC': 45,
-      'EBADF': 8,
-      'ECHILD': 12,
-      'EAGAIN': 6,
-      'EWOULDBLOCK': 6,
-      'ENOMEM': 48,
-      'EACCES': 2,
-      'EFAULT': 21,
-      'ENOTBLK': 105,
-      'EBUSY': 10,
-      'EEXIST': 20,
-      'EXDEV': 75,
-      'ENODEV': 43,
-      'ENOTDIR': 54,
-      'EISDIR': 31,
-      'EINVAL': 28,
-      'ENFILE': 41,
-      'EMFILE': 33,
-      'ENOTTY': 59,
-      'ETXTBSY': 74,
-      'EFBIG': 22,
-      'ENOSPC': 51,
-      'ESPIPE': 70,
-      'EROFS': 69,
-      'EMLINK': 34,
-      'EPIPE': 64,
-      'EDOM': 18,
-      'ERANGE': 68,
-      'ENOMSG': 49,
-      'EIDRM': 24,
-      'ECHRNG': 106,
-      'EL2NSYNC': 156,
-      'EL3HLT': 107,
-      'EL3RST': 108,
-      'ELNRNG': 109,
-      'EUNATCH': 110,
-      'ENOCSI': 111,
-      'EL2HLT': 112,
-      'EDEADLK': 16,
-      'ENOLCK': 46,
-      'EBADE': 113,
-      'EBADR': 114,
-      'EXFULL': 115,
-      'ENOANO': 104,
-      'EBADRQC': 103,
-      'EBADSLT': 102,
-      'EDEADLOCK': 16,
-      'EBFONT': 101,
-      'ENOSTR': 100,
-      'ENODATA': 116,
-      'ETIME': 117,
-      'ENOSR': 118,
-      'ENONET': 119,
-      'ENOPKG': 120,
-      'EREMOTE': 121,
-      'ENOLINK': 47,
-      'EADV': 122,
-      'ESRMNT': 123,
-      'ECOMM': 124,
-      'EPROTO': 65,
-      'EMULTIHOP': 36,
-      'EDOTDOT': 125,
-      'EBADMSG': 9,
-      'ENOTUNIQ': 126,
-      'EBADFD': 127,
-      'EREMCHG': 128,
-      'ELIBACC': 129,
-      'ELIBBAD': 130,
-      'ELIBSCN': 131,
-      'ELIBMAX': 132,
-      'ELIBEXEC': 133,
-      'ENOSYS': 52,
-      'ENOTEMPTY': 55,
-      'ENAMETOOLONG': 37,
-      'ELOOP': 32,
-      'EOPNOTSUPP': 138,
-      'EPFNOSUPPORT': 139,
-      'ECONNRESET': 15,
-      'ENOBUFS': 42,
-      'EAFNOSUPPORT': 5,
-      'EPROTOTYPE': 67,
-      'ENOTSOCK': 57,
-      'ENOPROTOOPT': 50,
-      'ESHUTDOWN': 140,
-      'ECONNREFUSED': 14,
-      'EADDRINUSE': 3,
-      'ECONNABORTED': 13,
-      'ENETUNREACH': 40,
-      'ENETDOWN': 38,
-      'ETIMEDOUT': 73,
-      'EHOSTDOWN': 142,
-      'EHOSTUNREACH': 23,
-      'EINPROGRESS': 26,
-      'EALREADY': 7,
-      'EDESTADDRREQ': 17,
-      'EMSGSIZE': 35,
-      'EPROTONOSUPPORT': 66,
-      'ESOCKTNOSUPPORT': 137,
-      'EADDRNOTAVAIL': 4,
-      'ENETRESET': 39,
-      'EISCONN': 30,
-      'ENOTCONN': 53,
-      'ETOOMANYREFS': 141,
-      'EUSERS': 136,
-      'EDQUOT': 19,
-      'ESTALE': 72,
-      'ENOTSUP': 138,
-      'ENOMEDIUM': 148,
-      'EILSEQ': 25,
-      'EOVERFLOW': 61,
-      'ECANCELED': 11,
-      'ENOTRECOVERABLE': 56,
-      'EOWNERDEAD': 62,
-      'ESTRPIPE': 135,
-    };
   var FS = {
   root:null,
   mounts:[],
@@ -3104,7 +2856,7 @@ async function createWasm() {
   syncFSRequests:0,
   readFiles:{
   },
-  ErrnoError:class extends Error {
+  ErrnoError:class {
         name = 'ErrnoError';
         // We set the `name` property to be able to identify `FS.ErrnoError`
         // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
@@ -3113,14 +2865,7 @@ async function createWasm() {
         // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
         // we'll use the reliable test `err.name == "ErrnoError"` instead
         constructor(errno) {
-          super(runtimeInitialized ? strError(errno) : '');
           this.errno = errno;
-          for (var key in ERRNO_CODES) {
-            if (ERRNO_CODES[key] === errno) {
-              this.code = key;
-              break;
-            }
-          }
         }
       },
   FSStream:class {
@@ -3318,7 +3063,6 @@ async function createWasm() {
         return FS.lookup(parent, name);
       },
   createNode(parent, name, mode, rdev) {
-        assert(typeof parent == 'object')
         var node = new FS.FSNode(parent, name, mode, rdev);
   
         FS.hashAddNode(node);
@@ -3457,7 +3201,6 @@ async function createWasm() {
       },
   getStream:(fd) => FS.streams[fd],
   createStream(stream, fd = -1) {
-        assert(fd >= -1);
   
         // clone it, so we can return an instance of FSStream
         stream = Object.assign(new FS.FSStream(), stream);
@@ -3532,7 +3275,6 @@ async function createWasm() {
         var completed = 0;
   
         function doCallback(errCode) {
-          assert(FS.syncFSRequests > 0);
           FS.syncFSRequests--;
           return callback(errCode);
         }
@@ -3559,11 +3301,6 @@ async function createWasm() {
         });
       },
   mount(type, opts, mountpoint) {
-        if (typeof type == 'string') {
-          // The filesystem was not included, and instead we have an error
-          // message stored in the variable.
-          throw type;
-        }
         var root = mountpoint === '/';
         var pseudo = !mountpoint;
         var node;
@@ -3642,7 +3379,6 @@ async function createWasm() {
   
         // remove this mount from the child mounts
         var idx = node.mount.mounts.indexOf(mount);
-        assert(idx !== -1);
         node.mount.mounts.splice(idx, 1);
       },
   lookup(parent, name) {
@@ -4135,7 +3871,6 @@ async function createWasm() {
         return stream.position;
       },
   read(stream, buffer, offset, length, position) {
-        assert(offset >= 0);
         if (length < 0 || position < 0) {
           throw new FS.ErrnoError(28);
         }
@@ -4162,7 +3897,6 @@ async function createWasm() {
         return bytesRead;
       },
   write(stream, buffer, offset, length, position, canOwn) {
-        assert(offset >= 0);
         if (length < 0 || position < 0) {
           throw new FS.ErrnoError(28);
         }
@@ -4216,7 +3950,6 @@ async function createWasm() {
         return stream.stream_ops.mmap(stream, length, position, prot, flags);
       },
   msync(stream, buffer, offset, length, mmapFlags) {
-        assert(offset >= 0);
         if (!stream.stream_ops.msync) {
           return 0;
         }
@@ -4380,9 +4113,6 @@ async function createWasm() {
         var stdin = FS.open('/dev/stdin', 0);
         var stdout = FS.open('/dev/stdout', 1);
         var stderr = FS.open('/dev/stderr', 1);
-        assert(stdin.fd === 0, `invalid handle for stdin (${stdin.fd})`);
-        assert(stdout.fd === 1, `invalid handle for stdout (${stdout.fd})`);
-        assert(stderr.fd === 2, `invalid handle for stderr (${stderr.fd})`);
       },
   staticInit() {
         FS.nameTable = new Array(4096);
@@ -4399,7 +4129,6 @@ async function createWasm() {
         };
       },
   init(input, output, error) {
-        assert(!FS.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
         FS.initialized = true;
   
         // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
@@ -4697,7 +4426,6 @@ async function createWasm() {
           if (position >= contents.length)
             return 0;
           var size = Math.min(contents.length - position, length);
-          assert(size >= 0);
           if (contents.slice) { // normal array
             for (var i = 0; i < size; i++) {
               buffer[offset + i] = contents[position + i];
@@ -4727,26 +4455,27 @@ async function createWasm() {
         node.stream_ops = stream_ops;
         return node;
       },
-  absolutePath() {
-        abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
-      },
-  createFolder() {
-        abort('FS.createFolder has been removed; use FS.mkdir instead');
-      },
-  createLink() {
-        abort('FS.createLink has been removed; use FS.symlink instead');
-      },
-  joinPath() {
-        abort('FS.joinPath has been removed; use PATH.join instead');
-      },
-  mmapAlloc() {
-        abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
-      },
-  standardizePath() {
-        abort('FS.standardizePath has been removed; use PATH.normalize instead');
-      },
   };
   
+  
+    /**
+     * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
+     * emscripten HEAP, returns a copy of that string as a Javascript String object.
+     *
+     * @param {number} ptr
+     * @param {number=} maxBytesToRead - An optional length that specifies the
+     *   maximum number of bytes to read. You can omit this parameter to scan the
+     *   string until the first 0 byte. If maxBytesToRead is passed, and the string
+     *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
+     *   string will cut short at that byte index (i.e. maxBytesToRead will not
+     *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
+     *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
+     *   JS JIT optimizations off, so it is worth to consider consistently using one
+     * @return {string}
+     */
+  var UTF8ToString = (ptr, maxBytesToRead) => {
+      return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
+    };
   var SYSCALLS = {
   DEFAULT_POLLMASK:5,
   calculateAt(dirfd, path, allowEmpty) {
@@ -4838,7 +4567,6 @@ async function createWasm() {
 
   /** @suppress {duplicate } */
   var syscallGetVarargI = () => {
-      assert(SYSCALLS.varargs != undefined);
       // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
       var ret = HEAP32[((+SYSCALLS.varargs)>>2)];
       SYSCALLS.varargs += 4;
@@ -5028,7 +4756,7 @@ async function createWasm() {
   }
 
   var __abort_js = () =>
-      abort('native code called abort()');
+      abort('');
 
   
   
@@ -5088,20 +4816,11 @@ async function createWasm() {
 
   var readEmAsmArgsArray = [];
   var readEmAsmArgs = (sigPtr, buf) => {
-      // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
-      assert(Array.isArray(readEmAsmArgsArray));
-      // The input buffer is allocated on the stack, so it must be stack-aligned.
-      assert(buf % 16 == 0);
       readEmAsmArgsArray.length = 0;
       var ch;
       // Most arguments are i32s, so shift the buffer pointer so it is a plain
       // index into HEAP32.
       while (ch = HEAPU8[sigPtr++]) {
-        var chr = String.fromCharCode(ch);
-        var validChars = ['d', 'f', 'i', 'p'];
-        // In WASM_BIGINT mode we support passing i64 values as bigint.
-        validChars.push('j');
-        assert(validChars.includes(chr), `Invalid character ${ch}("${chr}") in readEmAsmArgs! Use only [${validChars}], and do not specify "v" for void return argument.`);
         // Floats are always passed as doubles, so all types except for 'i'
         // are 8 bytes and require alignment.
         var wide = (ch != 105);
@@ -5121,13 +4840,559 @@ async function createWasm() {
     };
   var runEmAsmFunction = (code, sigPtr, argbuf) => {
       var args = readEmAsmArgs(sigPtr, argbuf);
-      assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
       return ASM_CONSTS[code](...args);
     };
   var _emscripten_asm_const_int = (code, sigPtr, argbuf) => {
       return runEmAsmFunction(code, sigPtr, argbuf);
     };
 
+  var _emscripten_cancel_animation_frame = (id) => cancelAnimationFrame(id);
+
+
+  var reallyNegative = (x) => x < 0 || (x === 0 && (1/x) === -Infinity);
+  
+  var convertI32PairToI53 = (lo, hi) => {
+      return (lo >>> 0) + hi * 4294967296;
+    };
+  
+  var convertU32PairToI53 = (lo, hi) => {
+      return (lo >>> 0) + (hi >>> 0) * 4294967296;
+    };
+  
+  var reSign = (value, bits) => {
+      if (value <= 0) {
+        return value;
+      }
+      var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
+                            : Math.pow(2, bits-1);
+      // for huge values, we can hit the precision limit and always get true here.
+      // so don't do that but, in general there is no perfect solution here. With
+      // 64-bit ints, we get rounding and errors
+      // TODO: In i64 mode 1, resign the two parts separately and safely
+      if (value >= half && (bits <= 32 || value > half)) {
+        // Cannot bitshift half, as it may be at the limit of the bits JS uses in
+        // bitshifts
+        value = -2*half + value;
+      }
+      return value;
+    };
+  
+  var unSign = (value, bits) => {
+      if (value >= 0) {
+        return value;
+      }
+      // Need some trickery, since if bits == 32, we are right at the limit of the
+      // bits JS uses in bitshifts
+      return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value
+                        : Math.pow(2, bits)         + value;
+    };
+  
+  var strLen = (ptr) => {
+      var end = ptr;
+      while (HEAPU8[end]) ++end;
+      return end - ptr;
+    };
+  
+  var formatString = (format, varargs) => {
+      var textIndex = format;
+      var argIndex = varargs;
+      // This must be called before reading a double or i64 vararg. It will bump the pointer properly.
+      // It also does an assert on i32 values, so it's nice to call it before all varargs calls.
+      function prepVararg(ptr, type) {
+        if (type === 'double' || type === 'i64') {
+          // move so the load is aligned
+          if (ptr & 7) {
+            ptr += 4;
+          }
+        } else {
+        }
+        return ptr;
+      }
+      function getNextArg(type) {
+        // NOTE: Explicitly ignoring type safety. Otherwise this fails:
+        //       int x = 4; printf("%c\n", (char)x);
+        var ret;
+        argIndex = prepVararg(argIndex, type);
+        if (type === 'double') {
+          ret = HEAPF64[((argIndex)>>3)];
+          argIndex += 8;
+        } else if (type == 'i64') {
+          ret = [HEAP32[((argIndex)>>2)],
+                 HEAP32[(((argIndex)+(4))>>2)]];
+          argIndex += 8;
+        } else {
+          type = 'i32'; // varargs are always i32, i64, or double
+          ret = HEAP32[((argIndex)>>2)];
+          argIndex += 4;
+        }
+        return ret;
+      }
+  
+      var ret = [];
+      var curr, next, currArg;
+      while (1) {
+        var startTextIndex = textIndex;
+        curr = HEAP8[textIndex];
+        if (curr === 0) break;
+        next = HEAP8[textIndex+1];
+        if (curr == 37) {
+          // Handle flags.
+          var flagAlwaysSigned = false;
+          var flagLeftAlign = false;
+          var flagAlternative = false;
+          var flagZeroPad = false;
+          var flagPadSign = false;
+          flagsLoop: while (1) {
+            switch (next) {
+              case 43:
+                flagAlwaysSigned = true;
+                break;
+              case 45:
+                flagLeftAlign = true;
+                break;
+              case 35:
+                flagAlternative = true;
+                break;
+              case 48:
+                if (flagZeroPad) {
+                  break flagsLoop;
+                } else {
+                  flagZeroPad = true;
+                  break;
+                }
+              case 32:
+                flagPadSign = true;
+                break;
+              default:
+                break flagsLoop;
+            }
+            textIndex++;
+            next = HEAP8[textIndex+1];
+          }
+  
+          // Handle width.
+          var width = 0;
+          if (next == 42) {
+            width = getNextArg('i32');
+            textIndex++;
+            next = HEAP8[textIndex+1];
+          } else {
+            while (next >= 48 && next <= 57) {
+              width = width * 10 + (next - 48);
+              textIndex++;
+              next = HEAP8[textIndex+1];
+            }
+          }
+  
+          // Handle precision.
+          var precisionSet = false, precision = -1;
+          if (next == 46) {
+            precision = 0;
+            precisionSet = true;
+            textIndex++;
+            next = HEAP8[textIndex+1];
+            if (next == 42) {
+              precision = getNextArg('i32');
+              textIndex++;
+            } else {
+              while (1) {
+                var precisionChr = HEAP8[textIndex+1];
+                if (precisionChr < 48 ||
+                    precisionChr > 57) break;
+                precision = precision * 10 + (precisionChr - 48);
+                textIndex++;
+              }
+            }
+            next = HEAP8[textIndex+1];
+          }
+          if (precision < 0) {
+            precision = 6; // Standard default.
+            precisionSet = false;
+          }
+  
+          // Handle integer sizes. WARNING: These assume a 32-bit architecture!
+          var argSize;
+          switch (String.fromCharCode(next)) {
+            case 'h':
+              var nextNext = HEAP8[textIndex+2];
+              if (nextNext == 104) {
+                textIndex++;
+                argSize = 1; // char (actually i32 in varargs)
+              } else {
+                argSize = 2; // short (actually i32 in varargs)
+              }
+              break;
+            case 'l':
+              var nextNext = HEAP8[textIndex+2];
+              if (nextNext == 108) {
+                textIndex++;
+                argSize = 8; // long long
+              } else {
+                argSize = 4; // long
+              }
+              break;
+            case 'L': // long long
+            case 'q': // int64_t
+            case 'j': // intmax_t
+              argSize = 8;
+              break;
+            case 'z': // size_t
+            case 't': // ptrdiff_t
+            case 'I': // signed ptrdiff_t or unsigned size_t
+              argSize = 4;
+              break;
+            default:
+              argSize = null;
+          }
+          if (argSize) textIndex++;
+          next = HEAP8[textIndex+1];
+  
+          // Handle type specifier.
+          switch (String.fromCharCode(next)) {
+            case 'd': case 'i': case 'u': case 'o': case 'x': case 'X': case 'p': {
+              // Integer.
+              var signed = next == 100 || next == 105;
+              argSize = argSize || 4;
+              currArg = getNextArg('i' + (argSize * 8));
+              var argText;
+              // Flatten i64-1 [low, high] into a (slightly rounded) double
+              if (argSize == 8) {
+                currArg = next == 117 ? convertU32PairToI53(currArg[0], currArg[1]) : convertI32PairToI53(currArg[0], currArg[1]);
+              }
+              // Truncate to requested size.
+              if (argSize <= 4) {
+                var limit = Math.pow(256, argSize) - 1;
+                currArg = (signed ? reSign : unSign)(currArg & limit, argSize * 8);
+              }
+              // Format the number.
+              var currAbsArg = Math.abs(currArg);
+              var prefix = '';
+              if (next == 100 || next == 105) {
+                argText = reSign(currArg, 8 * argSize).toString(10);
+              } else if (next == 117) {
+                argText = unSign(currArg, 8 * argSize).toString(10);
+                currArg = Math.abs(currArg);
+              } else if (next == 111) {
+                argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
+              } else if (next == 120 || next == 88) {
+                prefix = (flagAlternative && currArg != 0) ? '0x' : '';
+                if (currArg < 0) {
+                  // Represent negative numbers in hex as 2's complement.
+                  currArg = -currArg;
+                  argText = (currAbsArg - 1).toString(16);
+                  var buffer = [];
+                  for (var i = 0; i < argText.length; i++) {
+                    buffer.push((0xF - parseInt(argText[i], 16)).toString(16));
+                  }
+                  argText = buffer.join('');
+                  while (argText.length < argSize * 2) argText = 'f' + argText;
+                } else {
+                  argText = currAbsArg.toString(16);
+                }
+                if (next == 88) {
+                  prefix = prefix.toUpperCase();
+                  argText = argText.toUpperCase();
+                }
+              } else if (next == 112) {
+                if (currAbsArg === 0) {
+                  argText = '(nil)';
+                } else {
+                  prefix = '0x';
+                  argText = currAbsArg.toString(16);
+                }
+              }
+              if (precisionSet) {
+                while (argText.length < precision) {
+                  argText = '0' + argText;
+                }
+              }
+  
+              // Add sign if needed
+              if (currArg >= 0) {
+                if (flagAlwaysSigned) {
+                  prefix = '+' + prefix;
+                } else if (flagPadSign) {
+                  prefix = ' ' + prefix;
+                }
+              }
+  
+              // Move sign to prefix so we zero-pad after the sign
+              if (argText.charAt(0) == '-') {
+                prefix = '-' + prefix;
+                argText = argText.slice(1);
+              }
+  
+              // Add padding.
+              while (prefix.length + argText.length < width) {
+                if (flagLeftAlign) {
+                  argText += ' ';
+                } else {
+                  if (flagZeroPad) {
+                    argText = '0' + argText;
+                  } else {
+                    prefix = ' ' + prefix;
+                  }
+                }
+              }
+  
+              // Insert the result into the buffer.
+              argText = prefix + argText;
+              argText.split('').forEach((chr) => ret.push(chr.charCodeAt(0)));
+              break;
+            }
+            case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': {
+              // Float.
+              currArg = getNextArg('double');
+              var argText;
+              if (isNaN(currArg)) {
+                argText = 'nan';
+                flagZeroPad = false;
+              } else if (!isFinite(currArg)) {
+                argText = (currArg < 0 ? '-' : '') + 'inf';
+                flagZeroPad = false;
+              } else {
+                var isGeneral = false;
+                var effectivePrecision = Math.min(precision, 20);
+  
+                // Convert g/G to f/F or e/E, as per:
+                // http://pubs.opengroup.org/onlinepubs/9699919799/functions/printf.html
+                if (next == 103 || next == 71) {
+                  isGeneral = true;
+                  precision = precision || 1;
+                  var exponent = parseInt(currArg.toExponential(effectivePrecision).split('e')[1], 10);
+                  if (precision > exponent && exponent >= -4) {
+                    next = ((next == 103) ? 'f' : 'F').charCodeAt(0);
+                    precision -= exponent + 1;
+                  } else {
+                    next = ((next == 103) ? 'e' : 'E').charCodeAt(0);
+                    precision--;
+                  }
+                  effectivePrecision = Math.min(precision, 20);
+                }
+  
+                if (next == 101 || next == 69) {
+                  argText = currArg.toExponential(effectivePrecision);
+                  // Make sure the exponent has at least 2 digits.
+                  if (/[eE][-+]\d$/.test(argText)) {
+                    argText = argText.slice(0, -1) + '0' + argText.slice(-1);
+                  }
+                } else if (next == 102 || next == 70) {
+                  argText = currArg.toFixed(effectivePrecision);
+                  if (currArg === 0 && reallyNegative(currArg)) {
+                    argText = '-' + argText;
+                  }
+                }
+  
+                var parts = argText.split('e');
+                if (isGeneral && !flagAlternative) {
+                  // Discard trailing zeros and periods.
+                  while (parts[0].length > 1 && parts[0].includes('.') &&
+                         (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
+                    parts[0] = parts[0].slice(0, -1);
+                  }
+                } else {
+                  // Make sure we have a period in alternative mode.
+                  if (flagAlternative && argText.indexOf('.') == -1) parts[0] += '.';
+                  // Zero pad until required precision.
+                  while (precision > effectivePrecision++) parts[0] += '0';
+                }
+                argText = parts[0] + (parts.length > 1 ? 'e' + parts[1] : '');
+  
+                // Capitalize 'E' if needed.
+                if (next == 69) argText = argText.toUpperCase();
+  
+                // Add sign.
+                if (currArg >= 0) {
+                  if (flagAlwaysSigned) {
+                    argText = '+' + argText;
+                  } else if (flagPadSign) {
+                    argText = ' ' + argText;
+                  }
+                }
+              }
+  
+              // Add padding.
+              while (argText.length < width) {
+                if (flagLeftAlign) {
+                  argText += ' ';
+                } else {
+                  if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
+                    argText = argText[0] + '0' + argText.slice(1);
+                  } else {
+                    argText = (flagZeroPad ? '0' : ' ') + argText;
+                  }
+                }
+              }
+  
+              // Adjust case.
+              if (next < 97) argText = argText.toUpperCase();
+  
+              // Insert the result into the buffer.
+              argText.split('').forEach((chr) => ret.push(chr.charCodeAt(0)));
+              break;
+            }
+            case 's': {
+              // String.
+              var arg = getNextArg('i8*');
+              var argLength = arg ? strLen(arg) : '(null)'.length;
+              if (precisionSet) argLength = Math.min(argLength, precision);
+              if (!flagLeftAlign) {
+                while (argLength < width--) {
+                  ret.push(32);
+                }
+              }
+              if (arg) {
+                for (var i = 0; i < argLength; i++) {
+                  ret.push(HEAPU8[arg++]);
+                }
+              } else {
+                ret = ret.concat(intArrayFromString('(null)'.slice(0, argLength), true));
+              }
+              if (flagLeftAlign) {
+                while (argLength < width--) {
+                  ret.push(32);
+                }
+              }
+              break;
+            }
+            case 'c': {
+              // Character.
+              if (flagLeftAlign) ret.push(getNextArg('i8'));
+              while (--width > 0) {
+                ret.push(32);
+              }
+              if (!flagLeftAlign) ret.push(getNextArg('i8'));
+              break;
+            }
+            case 'n': {
+              // Write the length written so far to the next parameter.
+              var ptr = getNextArg('i32*');
+              HEAP32[((ptr)>>2)] = ret.length;
+              break;
+            }
+            case '%': {
+              // Literal percent sign.
+              ret.push(curr);
+              break;
+            }
+            default: {
+              // Unknown specifiers remain untouched.
+              for (var i = startTextIndex; i < textIndex + 2; i++) {
+                ret.push(HEAP8[i]);
+              }
+            }
+          }
+          textIndex += 2;
+          // TODO: Support a/A (hex float) and m (last error) specifiers.
+          // TODO: Support %1${specifier} for arg selection.
+        } else {
+          ret.push(curr);
+          textIndex += 1;
+        }
+      }
+      return ret;
+    };
+  
+  var jsStackTrace = () => new Error().stack.toString();
+  
+  var warnOnce = (text) => {
+      warnOnce.shown ||= {};
+      if (!warnOnce.shown[text]) {
+        warnOnce.shown[text] = 1;
+        err(text);
+      }
+    };
+  /** @param {number=} flags */
+  var getCallstack = (flags) => {
+      var callstack = jsStackTrace();
+  
+      // Process all lines:
+      var lines = callstack.split('\n');
+      callstack = '';
+      // Extract components of form:
+      // '       Object._main@http://server.com:4324:12'
+      var firefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)');
+      // Extract components of form:
+      // '    at Object._main (http://server.com/file.html:4324:12)'
+      var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)');
+  
+      for (var line of lines) {
+        var symbolName = '';
+        var file = '';
+        var lineno = 0;
+        var column = 0;
+  
+        var parts = chromeRe.exec(line);
+        if (parts?.length == 5) {
+          symbolName = parts[1];
+          file = parts[2];
+          lineno = parts[3];
+          column = parts[4];
+        } else {
+          parts = firefoxRe.exec(line);
+          if (parts?.length >= 4) {
+            symbolName = parts[1];
+            file = parts[2];
+            lineno = parts[3];
+            // Old Firefox doesn't carry column information, but in new FF30, it
+            // is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+            column = parts[4]|0;
+          } else {
+            // Was not able to extract this line for demangling/sourcemapping
+            // purposes. Output it as-is.
+            callstack += line + '\n';
+            continue;
+          }
+        }
+  
+        // Find the symbols in the callstack that corresponds to the functions that
+        // report callstack information, and remove everything up to these from the
+        // output.
+        if (symbolName == '_emscripten_log' || symbolName == '_emscripten_get_callstack') {
+          callstack = '';
+          continue;
+        }
+  
+        if ((flags & 24)) {
+          if (flags & 64) {
+            file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
+          }
+          callstack += `    at ${symbolName} (${file}:${lineno}:${column})\n`;
+        }
+      }
+      // Trim extra whitespace at the end of the output.
+      callstack = callstack.replace(/\s+$/, '');
+      return callstack;
+    };
+  var emscriptenLog = (flags, str) => {
+      if (flags & 24) {
+        str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
+        str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
+      }
+  
+      if (flags & 1) {
+        if (flags & 4) {
+          console.error(str);
+        } else if (flags & 2) {
+          console.warn(str);
+        } else if (flags & 512) {
+          console.info(str);
+        } else if (flags & 256) {
+          console.debug(str);
+        } else {
+          console.log(str);
+        }
+      } else if (flags & 6) {
+        err(str);
+      } else {
+        out(str);
+      }
+    };
+  var _emscripten_log = (flags, format, varargs) => {
+      var result = formatString(format, varargs);
+      var str = UTF8ArrayToString(result);
+      emscriptenLog(flags, str);
+    };
 
   var getHeapMax = () =>
       // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
@@ -5146,7 +5411,6 @@ async function createWasm() {
         updateMemoryViews();
         return 1 /*success*/;
       } catch(e) {
-        err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
       }
       // implicit 0 return to save code size (caller will cast "undefined" into 0
       // anyhow)
@@ -5157,7 +5421,6 @@ async function createWasm() {
       requestedSize >>>= 0;
       // With multithreaded builds, races can happen (another thread might increase the size
       // in between), so return a failure, and let the caller retry.
-      assert(requestedSize > oldSize);
   
       // Memory resize rules:
       // 1.  Always increase heap size to at least the requested size, rounded up
@@ -5180,7 +5443,6 @@ async function createWasm() {
       // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
       var maxHeapSize = getHeapMax();
       if (requestedSize > maxHeapSize) {
-        err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
         return false;
       }
   
@@ -5200,7 +5462,6 @@ async function createWasm() {
           return true;
         }
       }
-      err(`Failed to grow the heap from ${oldSize} bytes to ${newSize} bytes, not enough memory!`);
       return false;
     };
 
@@ -5212,12 +5473,6 @@ async function createWasm() {
       //    that wish to return to JS event loop.
       if (e instanceof ExitStatus || e == 'unwind') {
         return EXITSTATUS;
-      }
-      checkStackCookie();
-      if (e instanceof WebAssembly.RuntimeError) {
-        if (_emscripten_stack_get_current() <= 0) {
-          err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to 65536)');
-        }
       }
       quit_(1, e);
     };
@@ -5234,7 +5489,6 @@ async function createWasm() {
       quit_(code, new ExitStatus(code));
     };
   
-  
   /** @suppress {duplicate } */
   /** @param {boolean|number=} implicit */
   var exitJS = (status, implicit) => {
@@ -5242,12 +5496,6 @@ async function createWasm() {
   
       if (!keepRuntimeAlive()) {
         exitRuntime();
-      }
-  
-      // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
-      if (keepRuntimeAlive() && !implicit) {
-        var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
-        err(msg);
       }
   
       _proc_exit(status);
@@ -5269,7 +5517,6 @@ async function createWasm() {
     };
   var callUserCallback = (func) => {
       if (runtimeExited || ABORT) {
-        err('user callback triggered after runtime exited or application aborted.  Ignoring.');
         return;
       }
       try {
@@ -5285,7 +5532,6 @@ async function createWasm() {
     };
   
   var runtimeKeepalivePop = () => {
-      assert(runtimeKeepaliveCounter > 0);
       runtimeKeepaliveCounter -= 1;
     };
   /** @param {number=} timeout */
@@ -5296,14 +5542,21 @@ async function createWasm() {
         callUserCallback(func);
       }, timeout);
     };
-  var _emscripten_sleep = (ms) => {
-      // emscripten_sleep() does not return a value, but we still need a |return|
-      // here for stack switching support (ASYNCIFY=2). In that mode this function
-      // returns a Promise instead of nothing, and that Promise is what tells the
-      // wasm VM to pause the stack.
-      return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
+  var _emscripten_scan_registers = (func) => {
+      return Asyncify.handleSleep((wakeUp) => {
+        // We must first unwind, so things are spilled to the stack. Then while
+        // we are pausing we do the actual scan. After that we can resume. Note
+        // how using a timeout here avoids unbounded call stack growth, which
+        // could happen if we tried to scan the stack immediately after unwinding.
+        safeSetTimeout(() => {
+          var stackBegin = Asyncify.currData + 12;
+          var stackEnd = HEAPU32[((Asyncify.currData)>>2)];
+          ((a1, a2) => dynCall_vii(func, a1, a2))(stackBegin, stackEnd);
+          wakeUp();
+        }, 0);
+      });
     };
-  _emscripten_sleep.isAsync = true;
+  _emscripten_scan_registers.isAsync = true;
 
   var ENV = {
   };
@@ -5342,7 +5595,6 @@ async function createWasm() {
   
   var stringToAscii = (str, buffer) => {
       for (var i = 0; i < str.length; ++i) {
-        assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
         HEAP8[buffer++] = str.charCodeAt(i);
       }
       // Null-terminate the string
@@ -5492,11 +5744,98 @@ async function createWasm() {
   }
   }
 
+  var _get_uievent = (evtptr) => {
+      if (Module.uievents.length === 0) {
+          return 0;
+      }
+      const evt = Module.uievents.pop();
+      setValue(evtptr, evt.type, 'i32');
+      switch (evt.type) {
+          case EVT_T_MOUSEDOWN:
+          case EVT_T_MOUSEUP:
+          case EVT_T_MOUSEMOVE:
+              setValue(evtptr + 4, evt.button, 'i32');
+              setValue(evtptr + 4 + 4, evt.x, 'i32');
+              setValue(evtptr + 4 + 4 + 4, evt.y, 'i32');
+              break;
+          case EVT_T_KEYDOWN:
+          case EVT_T_KEYUP:
+              setValue(evtptr + 4, evt.key, 'i32');
+              break;
+      }
+     return 1;
+  };
+
+  var _peek_uievent = (evtptr) => {
+      const l = Module.uievents.length;
+      if (l === 0) return 0;
+      const evt = Module.uievents[l - 1];
+      setValue(evtptr, evt.type, 'i32');
+      return l;
+  };
+
+  var _safe_request_animation_frame = (cb, userData) => {
+      function _sraf() {
+          return requestAnimationFrame(
+              (timeStamp) => {
+                  if (Asyncify.state === 0) {
+                      ((a1, a2) => dynCall_idi(cb, a1, a2))(timeStamp, userData)
+                  }
+                  else {
+                      console.warn('dropped frame currState != 0');
+                      // FIXME update animationFrameID global
+                      setTimeout(
+                          ()=>Module.setValue(Module['_animationFrameID'], _sraf(), 'i32'),
+                          0
+                      );
+                  }
+              }
+          )
+      }
+      return _sraf();
+  };
+
+  var _webLogoSleep = (ms) => {
+  // emscripten_sleep() does not return a value, but we still need a |return|
+  // here for stack switching support (ASYNCIFY=2). In that mode this function
+  // returns a Promise instead of nothing, and that Promise is what tells the
+  // wasm VM to pause the stack.
+  return Asyncify.handleSleep((wakeUp) => {
+      Module.WEB_WAIT_WAKEUP = wakeUp;
+      Module.WEB_WAIT_TIMEOUT_ID = safeSetTimeout(()=>{
+          Module.WEB_WAIT_TIMEOUT_ID = 0;
+          Module.WEB_WAIT_WAKEUP = undefined;
+          wakeUp();
+      }, ms);
+  });
+  };
+  _webLogoSleep.isAsync = true;
+
+  
+  
+  
+  var _yield_to_js = () => {
+      // emscripten_sleep() does not return a value, but we still need a |return|
+      // here for stack switching support (ASYNCIFY=2). In that mode this function
+      // returns a Promise instead of nothing, and that Promise is what tells the
+      // wasm VM to pause the stack.
+      return (globalThis.scheduler?.yield) ? 
+      Asyncify.handleSleep((wakeUp) => {
+          runtimeKeepalivePush();
+          scheduler.yield().then(()=>{
+              runtimeKeepalivePop();
+              callUserCallback(wakeUp);
+          });
+          return -1;
+      }) : 
+      Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, 0))
+  };
+  _yield_to_js.isAsync = true;
+
 
 
   
   var stringToUTF8 = (str, outPtr, maxBytesToWrite) => {
-      assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
       return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
     };
   
@@ -5510,16 +5849,11 @@ async function createWasm() {
 
   var wasmTableMirror = [];
   
-  /** @type {WebAssembly.Table} */
-  var wasmTable;
   var getWasmTableEntry = (funcPtr) => {
       var func = wasmTableMirror[funcPtr];
       if (!func) {
         /** @suppress {checkTypes} */
         wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
-        if (Asyncify.isAsyncExport(func)) {
-          wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
-        }
       }
       return func;
     };
@@ -5548,7 +5882,6 @@ async function createWasm() {
         results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
       };
       for (var i = 1; i < sig.length; ++i) {
-        assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
         type.parameters.push(typeNames[sig[i]]);
       }
       return type;
@@ -5557,35 +5890,32 @@ async function createWasm() {
   
   
   
+  
+  
   var Asyncify = {
   instrumentWasmImports(imports) {
-        assert('Suspending' in WebAssembly, 'JSPI not supported by current environment. Perhaps it needs to be enabled via flags?');
         var importPattern = /^(invoke_.*|__asyncjs__.*)$/;
   
         for (let [x, original] of Object.entries(imports)) {
           if (typeof original == 'function') {
             let isAsyncifyImport = original.isAsync || importPattern.test(x);
-            // Wrap async imports with a suspending WebAssembly function.
-            if (isAsyncifyImport) {
-              imports[x] = original = new WebAssembly.Suspending(original);
-            }
           }
         }
       },
   instrumentWasmExports(exports) {
-        var exportPattern = /^(main|__main_argc_argv)$/;
-        Asyncify.asyncExports = new Set();
         var ret = {};
         for (let [x, original] of Object.entries(exports)) {
           if (typeof original == 'function') {
-            // Wrap all exports with a promising WebAssembly function.
-            let isAsyncifyExport = exportPattern.test(x);
-            if (isAsyncifyExport) {
-              Asyncify.asyncExports.add(original);
-              original = Asyncify.makeAsyncFunction(original);
-            }
             ret[x] = (...args) => {
+              Asyncify.exportCallStack.push(x);
+              try {
                 return original(...args);
+              } finally {
+                if (!ABORT) {
+                  var y = Asyncify.exportCallStack.pop();
+                  Asyncify.maybeStopUnwind();
+                }
+              }
             };
           } else {
             ret[x] = original;
@@ -5593,36 +5923,196 @@ async function createWasm() {
         }
         return ret;
       },
-  asyncExports:null,
-  isAsyncExport(func) {
-        return Asyncify.asyncExports?.has(func);
+  State:{
+  Normal:0,
+  Unwinding:1,
+  Rewinding:2,
+  Disabled:3,
+  },
+  state:0,
+  StackSize:20000000,
+  currData:null,
+  handleSleepReturnValue:0,
+  exportCallStack:[],
+  callStackNameToId:{
+  },
+  callStackIdToName:{
+  },
+  callStackId:0,
+  asyncPromiseHandlers:null,
+  sleepCallbacks:[],
+  getCallStackId(funcName) {
+        var id = Asyncify.callStackNameToId[funcName];
+        if (id === undefined) {
+          id = Asyncify.callStackId++;
+          Asyncify.callStackNameToId[funcName] = id;
+          Asyncify.callStackIdToName[id] = funcName;
+        }
+        return id;
       },
-  handleAsync:async (startAsync) => {
-        runtimeKeepalivePush();
-        try {
-          return await startAsync();
-        } finally {
-          runtimeKeepalivePop();
+  maybeStopUnwind() {
+        if (Asyncify.currData &&
+            Asyncify.state === Asyncify.State.Unwinding &&
+            Asyncify.exportCallStack.length === 0) {
+          // We just finished unwinding.
+          // Be sure to set the state before calling any other functions to avoid
+          // possible infinite recursion here (For example in debug pthread builds
+          // the dbg() function itself can call back into WebAssembly to get the
+          // current pthread_self() pointer).
+          Asyncify.state = Asyncify.State.Normal;
+          runtimeKeepalivePush();
+          // Keep the runtime alive so that a re-wind can be done later.
+          runAndAbortIfError(_asyncify_stop_unwind);
+          if (typeof Fibers != 'undefined') {
+            Fibers.trampoline();
+          }
         }
       },
-  handleSleep(startAsync) {
-        return Asyncify.handleAsync(() => new Promise(startAsync));
+  whenDone() {
+        return new Promise((resolve, reject) => {
+          Asyncify.asyncPromiseHandlers = { resolve, reject };
+        });
       },
-  makeAsyncFunction(original) {
-        return WebAssembly.promising(original);
+  allocateData() {
+        // An asyncify data structure has three fields:
+        //  0  current stack pos
+        //  4  max stack pos
+        //  8  id of function at bottom of the call stack (callStackIdToName[id] == name of js function)
+        //
+        // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
+        // We also embed a stack in the same memory region here, right next to the structure.
+        // This struct is also defined as asyncify_data_t in emscripten/fiber.h
+        var ptr = _malloc(12 + Asyncify.StackSize);
+        Asyncify.setDataHeader(ptr, ptr + 12, Asyncify.StackSize);
+        Asyncify.setDataRewindFunc(ptr);
+        return ptr;
+      },
+  setDataHeader(ptr, stack, stackSize) {
+        HEAPU32[((ptr)>>2)] = stack;
+        HEAPU32[(((ptr)+(4))>>2)] = stack + stackSize;
+      },
+  setDataRewindFunc(ptr) {
+        var bottomOfCallStack = Asyncify.exportCallStack[0];
+        var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
+        HEAP32[(((ptr)+(8))>>2)] = rewindId;
+      },
+  getDataRewindFuncName(ptr) {
+        var id = HEAP32[(((ptr)+(8))>>2)];
+        var name = Asyncify.callStackIdToName[id];
+        return name;
+      },
+  getDataRewindFunc(name) {
+        var func = wasmExports[name];
+        return func;
+      },
+  doRewind(ptr) {
+        var name = Asyncify.getDataRewindFuncName(ptr);
+        var func = Asyncify.getDataRewindFunc(name);
+        // Once we have rewound and the stack we no longer need to artificially
+        // keep the runtime alive.
+        runtimeKeepalivePop();
+        return func();
+      },
+  handleSleep(startAsync) {
+        if (ABORT) return;
+        if (Asyncify.state === Asyncify.State.Normal) {
+          // Prepare to sleep. Call startAsync, and see what happens:
+          // if the code decided to call our callback synchronously,
+          // then no async operation was in fact begun, and we don't
+          // need to do anything.
+          var reachedCallback = false;
+          var reachedAfterCallback = false;
+          startAsync((handleSleepReturnValue = 0) => {
+            if (ABORT) return;
+            Asyncify.handleSleepReturnValue = handleSleepReturnValue;
+            reachedCallback = true;
+            if (!reachedAfterCallback) {
+              // We are happening synchronously, so no need for async.
+              return;
+            }
+            Asyncify.state = Asyncify.State.Rewinding;
+            runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
+            if (typeof MainLoop != 'undefined' && MainLoop.func) {
+              MainLoop.resume();
+            }
+            var asyncWasmReturnValue, isError = false;
+            try {
+              asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+            } catch (err) {
+              asyncWasmReturnValue = err;
+              isError = true;
+            }
+            // Track whether the return value was handled by any promise handlers.
+            var handled = false;
+            if (!Asyncify.currData) {
+              // All asynchronous execution has finished.
+              // `asyncWasmReturnValue` now contains the final
+              // return value of the exported async WASM function.
+              //
+              // Note: `asyncWasmReturnValue` is distinct from
+              // `Asyncify.handleSleepReturnValue`.
+              // `Asyncify.handleSleepReturnValue` contains the return
+              // value of the last C function to have executed
+              // `Asyncify.handleSleep()`, where as `asyncWasmReturnValue`
+              // contains the return value of the exported WASM function
+              // that may have called C functions that
+              // call `Asyncify.handleSleep()`.
+              var asyncPromiseHandlers = Asyncify.asyncPromiseHandlers;
+              if (asyncPromiseHandlers) {
+                Asyncify.asyncPromiseHandlers = null;
+                (isError ? asyncPromiseHandlers.reject : asyncPromiseHandlers.resolve)(asyncWasmReturnValue);
+                handled = true;
+              }
+            }
+            if (isError && !handled) {
+              // If there was an error and it was not handled by now, we have no choice but to
+              // rethrow that error into the global scope where it can be caught only by
+              // `onerror` or `onunhandledpromiserejection`.
+              throw asyncWasmReturnValue;
+            }
+          });
+          reachedAfterCallback = true;
+          if (!reachedCallback) {
+            // A true async operation was begun; start a sleep.
+            Asyncify.state = Asyncify.State.Unwinding;
+            // TODO: reuse, don't alloc/free every sleep
+            Asyncify.currData = Asyncify.allocateData();
+            if (typeof MainLoop != 'undefined' && MainLoop.func) {
+              MainLoop.pause();
+            }
+            runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
+          }
+        } else if (Asyncify.state === Asyncify.State.Rewinding) {
+          // Stop a resume.
+          Asyncify.state = Asyncify.State.Normal;
+          runAndAbortIfError(_asyncify_stop_rewind);
+          _free(Asyncify.currData);
+          Asyncify.currData = null;
+          // Call all sleep callbacks now that the sleep-resume is all done.
+          Asyncify.sleepCallbacks.forEach(callUserCallback);
+        } else {
+          abort(`invalid state: ${Asyncify.state}`);
+        }
+        return Asyncify.handleSleepReturnValue;
+      },
+  handleAsync(startAsync) {
+        return Asyncify.handleSleep((wakeUp) => {
+          // TODO: add error handling as a second param when handleSleep implements it.
+          startAsync().then(wakeUp);
+        });
       },
   };
 
   var getCFunc = (ident) => {
       var func = Module['_' + ident]; // closure exported function
-      assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
       return func;
     };
   
   var writeArrayToMemory = (array, buffer) => {
-      assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
       HEAP8.set(array, buffer);
     };
+  
+  
   
   
   
@@ -5663,7 +6153,6 @@ async function createWasm() {
       var func = getCFunc(ident);
       var cArgs = [];
       var stack = 0;
-      assert(returnType !== 'array', 'Return type should not be "array".');
       if (args) {
         for (var i = 0; i < args.length; i++) {
           var converter = toC[argTypes[i]];
@@ -5675,18 +6164,33 @@ async function createWasm() {
           }
         }
       }
+      // Data for a previous async operation that was in flight before us.
+      var previousAsync = Asyncify.currData;
       var ret = func(...cArgs);
       function onDone(ret) {
+        runtimeKeepalivePop();
         if (stack !== 0) stackRestore(stack);
         return convertReturnValue(ret);
       }
     var asyncMode = opts?.async;
   
-      if (asyncMode) return ret.then(onDone);
+      // Keep the runtime alive through all calls. Note that this call might not be
+      // async, but for simplicity we push and pop in all calls.
+      runtimeKeepalivePush();
+      if (Asyncify.currData != previousAsync) {
+        // This is a new async operation. The wasm is paused and has unwound its stack.
+        // We need to return a Promise that resolves the return value
+        // once the stack is rewound and execution finishes.
+        return Asyncify.whenDone().then(onDone);
+      }
   
       ret = onDone(ret);
+      // If this is an async ccall, ensure we return a promise
+      if (asyncMode) return Promise.resolve(ret);
       return ret;
     };
+
+
 
   var FS_createPath = FS.createPath;
 
@@ -5708,105 +6212,63 @@ async function createWasm() {
   Module['FS_createLazyFile'] = FS.createLazyFile;
   Module['FS_createDevice'] = FS.createDevice;
   ;
+
+      // This error may happen quite a bit. To avoid overhead we reuse it (and
+      // suffer a lack of stack info).
+      MEMFS.doesNotExistError = new FS.ErrnoError(44);
+      /** @suppress {checkTypes} */
+      MEMFS.doesNotExistError.stack = '<generic error, no stack>';
+      ;
 // End JS library code
 
-function checkIncomingModuleAPI() {
-  ignoredModuleProp('fetchSettings');
-}
 var ASM_CONSTS = {
-  639248: ($0) => { outputElement.value += UTF8ToString($0) }
+  573251: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
+ 573380: () => { console.log("dropped frame due to LOGO_GIL") }
 };
-function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift(); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char.charCodeAt(0); }); }
-__asyncjs__em_getc.sig = 'i';
+function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift()?.charCodeAt(0); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
 function em_fflush(fh) { _fflush(fh) }
 function __asyncjs__web_edit(tmp_filename) { return Asyncify.handleAsync(async () => { try { await Module.editor.edit(UTF8ToString(tmp_filename)); } catch (error) { console.error(error); window.alert(error); } }); }
-__asyncjs__web_edit.sig = 'vi';
 function __asyncjs__web_get_any_key() { return Asyncify.handleAsync(async () => { await new Promise((res,rej)=>{ window.addEventListener( 'keydown', event=>{ event.preventDefault(); res(); return false; }, {once: true} ); }); }); }
-__asyncjs__web_get_any_key.sig = 'i';
 function web_prepare_to_draw() { Module.graphics.prepare_to_draw(); }
-web_prepare_to_draw.sig = 'v';
 function web_done_drawing() { Module.graphics.done_drawing(); }
-web_done_drawing.sig = 'v';
 function prepare_to_exit(v) { Module.graphics.prepare_to_exit(v); }
 function web_clear_screen() { Module.graphics.clear_screen(); }
-web_clear_screen.sig = 'v';
 function line_to(x,y) { Module.graphics.line_to(x, y); }
-line_to.sig = 'vii';
 function move_to(x,y) { Module.graphics.move_to(x, y); }
-move_to.sig = 'vii';
 function set_pen_vis(v) { Module.graphics.set_pen_vis(v); }
-set_pen_vis.sig = 'vi';
 function set_pen_mode(m) { Module.graphics.set_pen_mode(m); }
 function set_pen_color(c) { Module.graphics.set_pen_color(c); }
-set_pen_color.sig = 'vi';
 function set_pen_width(w) { Module.graphics.set_pen_width(w); }
-set_pen_width.sig = 'vi';
 function set_pen_height(h) { Module.graphics.set_pen_height(h); }
-set_pen_height.sig = 'vi';
 function set_pen_x(x) { Module.graphics.set_pen_x(); }
 function set_pen_y(y) { Module.graphics.set_pen_y(); }
 function web_set_back_ground(c) { Module.graphics.set_back_ground(c); }
-web_set_back_ground.sig = 'vi';
 function web_pen_reverse() { Module.graphics.pen_reverse(); }
-web_pen_reverse.sig = 'v';
 function web_pen_erase() { Module.graphics.pen_erase(); }
-web_pen_erase.sig = 'v';
 function web_pen_down() { Module.graphics.pen_down(); }
-web_pen_down.sig = 'v';
 function web_full_screen() { Module.graphics.full_screen(); }
-web_full_screen.sig = 'v';
 function web_split_screen() { Module.graphics.split_screen(); }
-web_split_screen.sig = 'v';
 function web_text_screen() { Module.graphics.text_screen(); }
-web_text_screen.sig = 'v';
 function save_pen(p) { Module.graphics.save_pen(p); }
-save_pen.sig = 'vi';
 function restore_pen(p) { Module.graphics.restore_pen(p); }
 function label(s) { Module.graphics.label(s); }
-label.sig = 'vi';
 function tone(pitch,duration) { Module.graphics.tone(pitch, duration); }
-tone.sig = 'vii';
 function web_prepare_to_draw_turtle() { Module.graphics.prepare_to_draw_turtle(); }
 function web_done_drawing_turtle() { Module.graphics.web_done_drawing_turtle(); }
 function logofill() { Module.graphics.logofill(); }
-logofill.sig = 'v';
 function set_palette(i,R,G,B) { Module.graphics.set_palette(i, R, G, B); }
-set_palette.sig = 'viiii';
 function get_palette(i,pR,pG,pB) { Module.graphics.get_palette(i, pR, pG, pB); }
-get_palette.sig = 'viiii';
 function erase_screen() { Module.graphics.erase_screen(); }
-function web_get_mouse_x() { return Module.graphics.web_get_mouse_x(); }
-web_get_mouse_x.sig = 'i';
-function web_get_mouse_y() { return Module.graphics.web_get_mouse_y(); }
-web_get_mouse_y.sig = 'i';
-function web_get_click_x() { return Module.graphics.web_get_click_x(); }
-web_get_click_x.sig = 'i';
-function web_get_click_y() { return Module.graphics.web_get_click_y(); }
-web_get_click_y.sig = 'i';
-function web_get_button() { return Module.graphics.web_get_button(); }
-web_get_button.sig = 'i';
-function web_get_buttonp() { return Module.graphics.web_get_buttonp(); }
-web_get_buttonp.sig = 'i';
 function web_draw_turtle(heading) { Module.graphics.draw_turtle(heading); }
-web_draw_turtle.sig = 'id';
 function adjust_label_height(label_height) { Module.graphics.adjust_label_height(label_height); }
-adjust_label_height.sig = 'vi';
 function get_label_size(w,h) { const {width, height} = Module.graphics.get_label_size(); setValue(h, height, 'i32'); setValue(w, width, 'i32'); }
-get_label_size.sig = 'vii';
 function web_hide_turtle() { Module.graphics.hide_turtle(); }
-web_hide_turtle.sig = 'i';
 function web_show_turtle() { Module.graphics.show_turtle(); }
-web_show_turtle.sig = 'i';
 function web_filled_begin(color) { Module.graphics.filled_begin(color); }
-web_filled_begin.sig = 'vi';
 function web_filled_end() { Module.graphics.filled_end(); }
-web_filled_end.sig = 'v';
 function web_filled_add_point(x,y) { Module.graphics.filled_add_point(x, y); }
-web_filled_add_point.sig = 'vii';
-function web_graphics_init() { Module.graphics.graphics_init(); }
-web_graphics_init.sig = 'v';
+function web_graphics_init() { if (typeof document !== 'undefined') { Module.graphics.graphics_init(); } }
 function web_keyp() { return 0; }
-web_keyp.sig = 'i';
 var wasmImports = {
   /** @export */
   __asyncjs__em_getc,
@@ -5837,11 +6299,15 @@ var wasmImports = {
   /** @export */
   emscripten_asm_const_int: _emscripten_asm_const_int,
   /** @export */
+  emscripten_cancel_animation_frame: _emscripten_cancel_animation_frame,
+  /** @export */
   emscripten_date_now: _emscripten_date_now,
+  /** @export */
+  emscripten_log: _emscripten_log,
   /** @export */
   emscripten_resize_heap: _emscripten_resize_heap,
   /** @export */
-  emscripten_sleep: _emscripten_sleep,
+  emscripten_scan_registers: _emscripten_scan_registers,
   /** @export */
   environ_get: _environ_get,
   /** @export */
@@ -5863,6 +6329,8 @@ var wasmImports = {
   /** @export */
   get_palette,
   /** @export */
+  get_uievent: _get_uievent,
+  /** @export */
   invoke_ddd,
   /** @export */
   invoke_id,
@@ -5883,6 +6351,10 @@ var wasmImports = {
   /** @export */
   move_to,
   /** @export */
+  peek_uievent: _peek_uievent,
+  /** @export */
+  safe_request_animation_frame: _safe_request_animation_frame,
+  /** @export */
   save_pen,
   /** @export */
   set_palette,
@@ -5897,6 +6369,8 @@ var wasmImports = {
   /** @export */
   tone,
   /** @export */
+  webLogoSleep: _webLogoSleep,
+  /** @export */
   web_clear_screen,
   /** @export */
   web_done_drawing,
@@ -5910,18 +6384,6 @@ var wasmImports = {
   web_filled_end,
   /** @export */
   web_full_screen,
-  /** @export */
-  web_get_button,
-  /** @export */
-  web_get_buttonp,
-  /** @export */
-  web_get_click_x,
-  /** @export */
-  web_get_click_y,
-  /** @export */
-  web_get_mouse_x,
-  /** @export */
-  web_get_mouse_y,
   /** @export */
   web_graphics_init,
   /** @export */
@@ -5943,32 +6405,67 @@ var wasmImports = {
   /** @export */
   web_split_screen,
   /** @export */
-  web_text_screen
+  web_text_screen,
+  /** @export */
+  yield_to_js: _yield_to_js
 };
 var wasmExports;
 createWasm();
-var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
-var _fflush = createExportWrapper('fflush', 1);
-var _logo_stop = Module['_logo_stop'] = createExportWrapper('logo_stop', 1);
-var _logo_pause = Module['_logo_pause'] = createExportWrapper('logo_pause', 1);
-var _mouse_down = Module['_mouse_down'] = createExportWrapper('mouse_down', 1);
-var _delayed_keyact = Module['_delayed_keyact'] = createExportWrapper('delayed_keyact', 1);
-var _main = Module['_main'] = createExportWrapper('__main_argc_argv', 2);
-var ___funcs_on_exit = createExportWrapper('__funcs_on_exit', 0);
-var _strerror = createExportWrapper('strerror', 1);
-var _setThrew = createExportWrapper('setThrew', 2);
-var _emscripten_stack_init = () => (_emscripten_stack_init = wasmExports['emscripten_stack_init'])();
-var _emscripten_stack_get_free = () => (_emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'])();
-var _emscripten_stack_get_base = () => (_emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'])();
-var _emscripten_stack_get_end = () => (_emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'])();
+var ___wasm_call_ctors = () => (___wasm_call_ctors = wasmExports['__wasm_call_ctors'])();
+var _fflush = (a0) => (_fflush = wasmExports['fflush'])(a0);
+var _malloc = (a0) => (_malloc = wasmExports['malloc'])(a0);
+var _free = (a0) => (_free = wasmExports['free'])(a0);
+var _logo_stop = Module['_logo_stop'] = (a0) => (_logo_stop = Module['_logo_stop'] = wasmExports['logo_stop'])(a0);
+var _logo_pause = Module['_logo_pause'] = (a0) => (_logo_pause = Module['_logo_pause'] = wasmExports['logo_pause'])(a0);
+var _mouse_down = Module['_mouse_down'] = (a0) => (_mouse_down = Module['_mouse_down'] = wasmExports['mouse_down'])(a0);
+var _delayed_keyact = Module['_delayed_keyact'] = (a0) => (_delayed_keyact = Module['_delayed_keyact'] = wasmExports['delayed_keyact'])(a0);
+var _main = Module['_main'] = (a0, a1) => (_main = Module['_main'] = wasmExports['__main_argc_argv'])(a0, a1);
+var _run_evaluator = Module['_run_evaluator'] = (a0) => (_run_evaluator = Module['_run_evaluator'] = wasmExports['run_evaluator'])(a0);
+var _logo_gc_debug_segment_list = Module['_logo_gc_debug_segment_list'] = () => (_logo_gc_debug_segment_list = Module['_logo_gc_debug_segment_list'] = wasmExports['logo_gc_debug_segment_list'])();
+var _logo_gc_debug_segment_next = Module['_logo_gc_debug_segment_next'] = (a0) => (_logo_gc_debug_segment_next = Module['_logo_gc_debug_segment_next'] = wasmExports['logo_gc_debug_segment_next'])(a0);
+var _logo_gc_debug_segment_size = Module['_logo_gc_debug_segment_size'] = (a0) => (_logo_gc_debug_segment_size = Module['_logo_gc_debug_segment_size'] = wasmExports['logo_gc_debug_segment_size'])(a0);
+var _logo_gc_debug_segment_node = Module['_logo_gc_debug_segment_node'] = (a0, a1) => (_logo_gc_debug_segment_node = Module['_logo_gc_debug_segment_node'] = wasmExports['logo_gc_debug_segment_node'])(a0, a1);
+var _logo_gc_debug_node_type = Module['_logo_gc_debug_node_type'] = (a0) => (_logo_gc_debug_node_type = Module['_logo_gc_debug_node_type'] = wasmExports['logo_gc_debug_node_type'])(a0);
+var _logo_gc_debug_node_car = Module['_logo_gc_debug_node_car'] = (a0) => (_logo_gc_debug_node_car = Module['_logo_gc_debug_node_car'] = wasmExports['logo_gc_debug_node_car'])(a0);
+var _logo_gc_debug_node_cdr = Module['_logo_gc_debug_node_cdr'] = (a0) => (_logo_gc_debug_node_cdr = Module['_logo_gc_debug_node_cdr'] = wasmExports['logo_gc_debug_node_cdr'])(a0);
+var _logo_gc_debug_node_obj = Module['_logo_gc_debug_node_obj'] = (a0) => (_logo_gc_debug_node_obj = Module['_logo_gc_debug_node_obj'] = wasmExports['logo_gc_debug_node_obj'])(a0);
+var _logo_gc_debug_node_next = Module['_logo_gc_debug_node_next'] = (a0) => (_logo_gc_debug_node_next = Module['_logo_gc_debug_node_next'] = wasmExports['logo_gc_debug_node_next'])(a0);
+var _logo_gc_debug_node_generation = Module['_logo_gc_debug_node_generation'] = (a0) => (_logo_gc_debug_node_generation = Module['_logo_gc_debug_node_generation'] = wasmExports['logo_gc_debug_node_generation'])(a0);
+var _logo_gc_debug_node_mark = Module['_logo_gc_debug_node_mark'] = (a0) => (_logo_gc_debug_node_mark = Module['_logo_gc_debug_node_mark'] = wasmExports['logo_gc_debug_node_mark'])(a0);
+var _logo_gc_debug_node_id = Module['_logo_gc_debug_node_id'] = (a0) => (_logo_gc_debug_node_id = Module['_logo_gc_debug_node_id'] = wasmExports['logo_gc_debug_node_id'])(a0);
+var ___funcs_on_exit = () => (___funcs_on_exit = wasmExports['__funcs_on_exit'])();
+var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
+var _setThrew = (a0, a1) => (_setThrew = wasmExports['setThrew'])(a0, a1);
 var __emscripten_stack_restore = (a0) => (__emscripten_stack_restore = wasmExports['_emscripten_stack_restore'])(a0);
 var __emscripten_stack_alloc = (a0) => (__emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'])(a0);
-var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 606856;
+var dynCall_iiii = Module['dynCall_iiii'] = (a0, a1, a2, a3) => (dynCall_iiii = Module['dynCall_iiii'] = wasmExports['dynCall_iiii'])(a0, a1, a2, a3);
+var dynCall_ii = Module['dynCall_ii'] = (a0, a1) => (dynCall_ii = Module['dynCall_ii'] = wasmExports['dynCall_ii'])(a0, a1);
+var dynCall_vi = Module['dynCall_vi'] = (a0, a1) => (dynCall_vi = Module['dynCall_vi'] = wasmExports['dynCall_vi'])(a0, a1);
+var dynCall_iii = Module['dynCall_iii'] = (a0, a1, a2) => (dynCall_iii = Module['dynCall_iii'] = wasmExports['dynCall_iii'])(a0, a1, a2);
+var dynCall_ddd = Module['dynCall_ddd'] = (a0, a1, a2) => (dynCall_ddd = Module['dynCall_ddd'] = wasmExports['dynCall_ddd'])(a0, a1, a2);
+var dynCall_id = Module['dynCall_id'] = (a0, a1) => (dynCall_id = Module['dynCall_id'] = wasmExports['dynCall_id'])(a0, a1);
+var dynCall_v = Module['dynCall_v'] = (a0) => (dynCall_v = Module['dynCall_v'] = wasmExports['dynCall_v'])(a0);
+var dynCall_vii = Module['dynCall_vii'] = (a0, a1, a2) => (dynCall_vii = Module['dynCall_vii'] = wasmExports['dynCall_vii'])(a0, a1, a2);
+var dynCall_idi = Module['dynCall_idi'] = (a0, a1, a2) => (dynCall_idi = Module['dynCall_idi'] = wasmExports['dynCall_idi'])(a0, a1, a2);
+var dynCall_jiji = Module['dynCall_jiji'] = (a0, a1, a2, a3) => (dynCall_jiji = Module['dynCall_jiji'] = wasmExports['dynCall_jiji'])(a0, a1, a2, a3);
+var dynCall_iidiiii = Module['dynCall_iidiiii'] = (a0, a1, a2, a3, a4, a5, a6) => (dynCall_iidiiii = Module['dynCall_iidiiii'] = wasmExports['dynCall_iidiiii'])(a0, a1, a2, a3, a4, a5, a6);
+var _asyncify_start_unwind = (a0) => (_asyncify_start_unwind = wasmExports['asyncify_start_unwind'])(a0);
+var _asyncify_stop_unwind = () => (_asyncify_stop_unwind = wasmExports['asyncify_stop_unwind'])();
+var _asyncify_start_rewind = (a0) => (_asyncify_start_rewind = wasmExports['asyncify_start_rewind'])(a0);
+var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports['asyncify_stop_rewind'])();
+var _Unbound = Module['_Unbound'] = 634548;
+var _inside_evaluator = Module['_inside_evaluator'] = 573888;
+var _in_eval_save = Module['_in_eval_save'] = 574028;
+var _int_during_gc = Module['_int_during_gc'] = 703436;
+var _Buttonact = Module['_Buttonact'] = 634584;
+var _inside_gc = Module['_inside_gc'] = 703432;
+var _LOGO_GIL = Module['_LOGO_GIL'] = 569608;
+var _animationFrameID = Module['_animationFrameID'] = 704784;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 543140;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
-    return getWasmTableEntry(index)(a1);
+    return dynCall_ii(index,a1);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5979,7 +6476,7 @@ function invoke_ii(index,a1) {
 function invoke_iii(index,a1,a2) {
   var sp = stackSave();
   try {
-    return getWasmTableEntry(index)(a1,a2);
+    return dynCall_iii(index,a1,a2);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5990,7 +6487,7 @@ function invoke_iii(index,a1,a2) {
 function invoke_ddd(index,a1,a2) {
   var sp = stackSave();
   try {
-    return getWasmTableEntry(index)(a1,a2);
+    return dynCall_ddd(index,a1,a2);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -6001,7 +6498,7 @@ function invoke_ddd(index,a1,a2) {
 function invoke_vi(index,a1) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)(a1);
+    dynCall_vi(index,a1);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -6012,7 +6509,7 @@ function invoke_vi(index,a1) {
 function invoke_id(index,a1) {
   var sp = stackSave();
   try {
-    return getWasmTableEntry(index)(a1);
+    return dynCall_id(index,a1);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -6023,7 +6520,7 @@ function invoke_id(index,a1) {
 function invoke_v(index) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)();
+    dynCall_v(index);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -6038,305 +6535,17 @@ function invoke_v(index) {
 Module['addRunDependency'] = addRunDependency;
 Module['removeRunDependency'] = removeRunDependency;
 Module['ccall'] = ccall;
+Module['setValue'] = setValue;
+Module['getValue'] = getValue;
 Module['FS_createPreloadedFile'] = FS_createPreloadedFile;
 Module['FS_unlink'] = FS_unlink;
 Module['FS_createPath'] = FS_createPath;
 Module['FS_createDevice'] = FS_createDevice;
 Module['FS_createDataFile'] = FS_createDataFile;
 Module['FS_createLazyFile'] = FS_createLazyFile;
-var missingLibrarySymbols = [
-  'writeI53ToI64',
-  'writeI53ToI64Clamped',
-  'writeI53ToI64Signaling',
-  'writeI53ToU64Clamped',
-  'writeI53ToU64Signaling',
-  'readI53FromI64',
-  'readI53FromU64',
-  'convertI32PairToI53',
-  'convertI32PairToI53Checked',
-  'convertU32PairToI53',
-  'getTempRet0',
-  'setTempRet0',
-  'inetPton4',
-  'inetNtop4',
-  'inetPton6',
-  'inetNtop6',
-  'readSockaddr',
-  'writeSockaddr',
-  'emscriptenLog',
-  'runMainThreadEmAsm',
-  'jstoi_q',
-  'listenOnce',
-  'autoResumeAudioContext',
-  'getDynCaller',
-  'dynCall',
-  'asmjsMangle',
-  'HandleAllocator',
-  'getNativeTypeSize',
-  'addOnInit',
-  'addOnPostCtor',
-  'addOnPreMain',
-  'STACK_SIZE',
-  'STACK_ALIGN',
-  'POINTER_SIZE',
-  'ASSERTIONS',
-  'cwrap',
-  'uleb128Encode',
-  'generateFuncType',
-  'convertJsFunctionToWasm',
-  'getEmptyTableSlot',
-  'updateTableMap',
-  'getFunctionAddress',
-  'addFunction',
-  'removeFunction',
-  'reallyNegative',
-  'unSign',
-  'strLen',
-  'reSign',
-  'formatString',
-  'intArrayToString',
-  'AsciiToString',
-  'UTF16ToString',
-  'stringToUTF16',
-  'lengthBytesUTF16',
-  'UTF32ToString',
-  'stringToUTF32',
-  'lengthBytesUTF32',
-  'stringToNewUTF8',
-  'registerKeyEventCallback',
-  'maybeCStringToJsString',
-  'findEventTarget',
-  'getBoundingClientRect',
-  'fillMouseEventData',
-  'registerMouseEventCallback',
-  'registerWheelEventCallback',
-  'registerUiEventCallback',
-  'registerFocusEventCallback',
-  'fillDeviceOrientationEventData',
-  'registerDeviceOrientationEventCallback',
-  'fillDeviceMotionEventData',
-  'registerDeviceMotionEventCallback',
-  'screenOrientation',
-  'fillOrientationChangeEventData',
-  'registerOrientationChangeEventCallback',
-  'fillFullscreenChangeEventData',
-  'registerFullscreenChangeEventCallback',
-  'JSEvents_requestFullscreen',
-  'JSEvents_resizeCanvasForFullscreen',
-  'registerRestoreOldStyle',
-  'hideEverythingExceptGivenElement',
-  'restoreHiddenElements',
-  'setLetterbox',
-  'softFullscreenResizeWebGLRenderTarget',
-  'doRequestFullscreen',
-  'fillPointerlockChangeEventData',
-  'registerPointerlockChangeEventCallback',
-  'registerPointerlockErrorEventCallback',
-  'requestPointerLock',
-  'fillVisibilityChangeEventData',
-  'registerVisibilityChangeEventCallback',
-  'registerTouchEventCallback',
-  'fillGamepadEventData',
-  'registerGamepadEventCallback',
-  'registerBeforeUnloadEventCallback',
-  'fillBatteryEventData',
-  'battery',
-  'registerBatteryEventCallback',
-  'setCanvasElementSize',
-  'getCanvasElementSize',
-  'jsStackTrace',
-  'getCallstack',
-  'convertPCtoSourceLocation',
-  'wasiRightsToMuslOFlags',
-  'wasiOFlagsToMuslOFlags',
-  'setImmediateWrapped',
-  'safeRequestAnimationFrame',
-  'clearImmediateWrapped',
-  'registerPostMainLoop',
-  'registerPreMainLoop',
-  'getPromise',
-  'makePromise',
-  'idsToPromises',
-  'makePromiseCallback',
-  'ExceptionInfo',
-  'findMatchingCatch',
-  'Browser_asyncPrepareDataCounter',
-  'isLeapYear',
-  'ydayFromDate',
-  'arraySum',
-  'addDays',
-  'getSocketFromFD',
-  'getSocketAddress',
-  'FS_mkdirTree',
-  '_setNetworkCallback',
-  'heapObjectForWebGLType',
-  'toTypedArrayIndex',
-  'webgl_enable_ANGLE_instanced_arrays',
-  'webgl_enable_OES_vertex_array_object',
-  'webgl_enable_WEBGL_draw_buffers',
-  'webgl_enable_WEBGL_multi_draw',
-  'webgl_enable_EXT_polygon_offset_clamp',
-  'webgl_enable_EXT_clip_control',
-  'webgl_enable_WEBGL_polygon_mode',
-  'emscriptenWebGLGet',
-  'computeUnpackAlignedImageSize',
-  'colorChannelsInGlTextureFormat',
-  'emscriptenWebGLGetTexPixelData',
-  'emscriptenWebGLGetUniform',
-  'webglGetUniformLocation',
-  'webglPrepareUniformLocationsBeforeFirstUse',
-  'webglGetLeftBracePos',
-  'emscriptenWebGLGetVertexAttrib',
-  '__glGetActiveAttribOrUniform',
-  'writeGLArray',
-  'registerWebGlEventCallback',
-  'ALLOC_NORMAL',
-  'ALLOC_STACK',
-  'allocate',
-  'writeStringToMemory',
-  'writeAsciiToMemory',
-  'setErrNo',
-  'demangle',
-  'stackTrace',
-];
-missingLibrarySymbols.forEach(missingLibrarySymbol)
-
-var unexportedSymbols = [
-  'run',
-  'out',
-  'err',
-  'callMain',
-  'abort',
-  'wasmMemory',
-  'wasmExports',
-  'writeStackCookie',
-  'checkStackCookie',
-  'INT53_MAX',
-  'INT53_MIN',
-  'bigintToI53Checked',
-  'stackSave',
-  'stackRestore',
-  'stackAlloc',
-  'ptrToString',
-  'zeroMemory',
-  'exitJS',
-  'getHeapMax',
-  'growMemory',
-  'ENV',
-  'ERRNO_CODES',
-  'strError',
-  'DNS',
-  'Protocols',
-  'Sockets',
-  'timers',
-  'warnOnce',
-  'readEmAsmArgsArray',
-  'readEmAsmArgs',
-  'runEmAsmFunction',
-  'jstoi_s',
-  'getExecutableName',
-  'handleException',
-  'keepRuntimeAlive',
-  'runtimeKeepalivePush',
-  'runtimeKeepalivePop',
-  'callUserCallback',
-  'maybeExit',
-  'asyncLoad',
-  'alignMemory',
-  'mmapAlloc',
-  'wasmTable',
-  'noExitRuntime',
-  'addOnPreRun',
-  'addOnExit',
-  'addOnPostRun',
-  'getCFunc',
-  'sigToWasmTypes',
-  'freeTableIndexes',
-  'functionsInTableMap',
-  'setValue',
-  'getValue',
-  'PATH',
-  'PATH_FS',
-  'UTF8Decoder',
-  'UTF8ArrayToString',
-  'UTF8ToString',
-  'stringToUTF8Array',
-  'stringToUTF8',
-  'lengthBytesUTF8',
-  'intArrayFromString',
-  'stringToAscii',
-  'UTF16Decoder',
-  'stringToUTF8OnStack',
-  'writeArrayToMemory',
-  'JSEvents',
-  'specialHTMLTargets',
-  'findCanvasEventTarget',
-  'currentFullscreenStrategy',
-  'restoreOldWindowedStyle',
-  'UNWIND_CACHE',
-  'ExitStatus',
-  'getEnvStrings',
-  'checkWasiClock',
-  'doReadv',
-  'doWritev',
-  'initRandomFill',
-  'randomFill',
-  'safeSetTimeout',
-  'emSetImmediate',
-  'emClearImmediate_deps',
-  'emClearImmediate',
-  'promiseMap',
-  'uncaughtExceptionCount',
-  'exceptionLast',
-  'exceptionCaught',
-  'Browser',
-  'getPreloadedImageData__data',
-  'wget',
-  'MONTH_DAYS_REGULAR',
-  'MONTH_DAYS_LEAP',
-  'MONTH_DAYS_REGULAR_CUMULATIVE',
-  'MONTH_DAYS_LEAP_CUMULATIVE',
-  'SYSCALLS',
-  'preloadPlugins',
-  'FS_modeStringToFlags',
-  'FS_getMode',
-  'FS_stdin_getChar_buffer',
-  'FS_stdin_getChar',
-  'FS_readFile',
-  'FS',
-  'MEMFS',
-  'TTY',
-  'PIPEFS',
-  'SOCKFS',
-  'tempFixedLengthArray',
-  'miniTempWebGLFloatBuffers',
-  'miniTempWebGLIntBuffers',
-  'GL',
-  'AL',
-  'GLUT',
-  'EGL',
-  'GLEW',
-  'IDBStore',
-  'runAndAbortIfError',
-  'Asyncify',
-  'Fibers',
-  'SDL',
-  'SDL_gfx',
-  'allocateUTF8',
-  'allocateUTF8OnStack',
-  'print',
-  'printErr',
-  'IDBFS',
-];
-unexportedSymbols.forEach(unexportedRuntimeSymbol);
 
 
-
-var calledRun;
-
-async function callMain(args = []) {
-  assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
-  assert(typeof onPreRuns === 'undefined' || onPreRuns.length == 0, 'cannot call main when preRun functions remain to be called');
+function callMain(args = []) {
 
   var entryFunction = _main;
 
@@ -6352,28 +6561,21 @@ async function callMain(args = []) {
   HEAPU32[((argv_ptr)>>2)] = 0;
 
   try {
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth++;
 
     var ret = entryFunction(argc, argv);
 
-    // The current spec of JSPI returns a promise only if the function suspends
-    // and a plain value otherwise. This will likely change:
-    // https://github.com/WebAssembly/js-promise-integration/issues/11
-    ret = await ret;
     // if we're not running an evented main loop, it's time to exit
     exitJS(ret, /* implicit = */ true);
     return ret;
   } catch (e) {
     return handleException(e);
   }
-}
-
-function stackCheckInit() {
-  // This is normally called automatically during __wasm_call_ctors but need to
-  // get these values before even running any of the ctors so we call it redundantly
-  // here.
-  _emscripten_stack_init();
-  // TODO(sbc): Move writeStackCookie to native to to avoid this.
-  writeStackCookie();
+  finally {
+    // See abortWrapperDepth in preamble.js!
+    abortWrapperDepth--;
+  }
 }
 
 function run(args = arguments_) {
@@ -6382,8 +6584,6 @@ function run(args = arguments_) {
     dependenciesFulfilled = run;
     return;
   }
-
-  stackCheckInit();
 
   preRun();
 
@@ -6396,8 +6596,6 @@ function run(args = arguments_) {
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
-    assert(!calledRun);
-    calledRun = true;
     Module['calledRun'] = true;
 
     if (ABORT) return;
@@ -6407,9 +6605,8 @@ function run(args = arguments_) {
     preMain();
 
     Module['onRuntimeInitialized']?.();
-    consumedModuleProp('onRuntimeInitialized');
 
-    var noInitialRun = Module['noInitialRun'];legacyModuleProp('noInitialRun', 'noInitialRun');
+    var noInitialRun = Module['noInitialRun'];
     if (!noInitialRun) callMain(args);
 
     postRun();
@@ -6425,7 +6622,6 @@ function run(args = arguments_) {
   {
     doRun();
   }
-  checkStackCookie();
 }
 
 if (Module['preInit']) {
@@ -6434,7 +6630,6 @@ if (Module['preInit']) {
     Module['preInit'].pop()();
   }
 }
-consumedModuleProp('preInit');
 
 run();
 
