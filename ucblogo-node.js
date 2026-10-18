@@ -267,8 +267,10 @@ Module.graphics.graphics_init = () => {
     // if (document.ontouchstart) {
     // ld.addEventListener('touchstart', handleMouseDown, { capture: true });
     // todo right-button support
-    // ld.addEventListener('contextmenu', (evt) => {
-    // }, { capture: true });
+    ld.addEventListener('contextmenu', (evt) => {
+        // suppress context menu
+        evt.preventDefault();
+    }, { capture: true });
 };
 Module.graphics.prepare_to_draw = () => {
     // console.log("prepare_to_draw");
@@ -442,8 +444,8 @@ Module.graphics.split_screen = () => {
     if (Module.graphics.mode == 'split_screen') return;
     Module.graphics.mode = 'split_screen';
     // console.log(`split_screen ${[]}`);
-    document.getElementById('logoDrawing')
-        .style.setProperty('display', 'block');
+    document.getElementById('svgContainer')
+        .style.setProperty('display', 'flex');
     document.getElementById('logoInputContainer')
         .style.setProperty('display', 'flex');
     window.dispatchEvent(new Event('resize'));
@@ -452,7 +454,7 @@ Module.graphics.text_screen = () => {
     if (Module.graphics.mode == 'text_screen') return;
     Module.graphics.mode = 'text_screen';
     console.log(`text_screen ${[]}`);
-    document.getElementById('logoDrawing')
+    document.getElementById('svgContainer')
         .style.setProperty('display', 'none');
     document.getElementById('logoInputContainer')
         .style.setProperty('display', 'flex');
@@ -717,7 +719,9 @@ Module.commandHistory = [];
 Module.commandHistoryIdx = -1;
 Module.currentCommand = null;
 Module.handleKeyDown = evt => {
-    // todo send chars to keyact when logo is running
+    // for keyact
+    Module.onkeydown(evt);
+
     const inputText = document.getElementById('logoInputText');
     if (evt.key == "ArrowDown") {
         evt.preventDefault();
@@ -940,6 +944,8 @@ const EVT_T_MOUSEMOVE = 3;
 const EVT_T_KEYDOWN = 4;
 const EVT_T_KEYUP = 5;
 const EVT_T_KEYPRESS = 6;
+const EVT_T_PAUSELOGO = 7;
+const EVT_T_STOPLOGO = 8;
 
  Module.uieventypes = {
     'mousedown': EVT_T_MOUSEDOWN,
@@ -951,8 +957,8 @@ const EVT_T_KEYPRESS = 6;
     'keypress': EVT_T_KEYPRESS,
     // TODO these can be simple flags, and should be higher
     // priority than ui events
-    // 'pauselogo': 7,
-    // 'stoplogo': 8,
+    'pauselogo': 7,
+    'stoplogo': 8,
 }
 
 Module.gdk_keycodes = {
@@ -1008,14 +1014,31 @@ Module.onmousemove = (evt) => {
 }
 
 Module.onkeydown = (evt) => {
-    evt.preventDefault();
+    // evt.preventDefault();
     Module.uievents.unshift({
         type: Module.uieventypes['keydown'],   
         key: Module.gdk_keycodes[evt.key] || evt.key.charCodeAt(0),
     });
     Module.run_evaluator(false);
     return false;
-}// end include: pre.js
+}
+
+Module.onpauselogo = (evt) => {
+    if (getValue(Module['_LOGO_GIL']) === 0) return;
+    Module.uievents.splice(0, Module.uievents.length, {
+        type: EVT_T_PAUSELOGO
+    });
+    Module.run_evaluator(false);
+}
+
+Module.onstoplogo = (evt) => {
+    if (getValue(Module['_LOGO_GIL']) === 0) return;
+    Module.uievents.splice(0, Module.uievents.length, {
+        type: EVT_T_STOPLOGO
+    });
+    Module.run_evaluator(false);
+}
+ // end include: pre.js
 // include: /home/jeff/emsdk/upstream/emscripten/src/emrun_prejs.js
 /**
  * @license
@@ -5923,6 +5946,14 @@ async function createWasm() {
      return 1;
   };
 
+  var _peek_uievent = (evtptr) => {
+      const l = Module.uievents.length;
+      if (l === 0) return 0;
+      const evt = Module.uievents[l - 1];
+      setValue(evtptr, evt.type, 'i32');
+      return l;
+  };
+
   var _safe_request_animation_frame = (cb, userData) => {
       function _sraf() {
           return requestAnimationFrame(
@@ -6379,8 +6410,8 @@ if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); };
 // End JS library code
 
 var ASM_CONSTS = {
-  29075: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
- 29204: () => { console.log("dropped frame due to LOGO_GIL") }
+  29123: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
+ 29252: () => { console.log("dropped frame due to LOGO_GIL") }
 };
 function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift()?.charCodeAt(0); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
 function em_fflush(fh) { _fflush(fh) }
@@ -6506,6 +6537,8 @@ var wasmImports = {
   /** @export */
   move_to,
   /** @export */
+  peek_uievent: _peek_uievent,
+  /** @export */
   safe_request_animation_frame: _safe_request_animation_frame,
   /** @export */
   save_pen,
@@ -6606,14 +6639,14 @@ var _asyncify_start_unwind = (a0) => (_asyncify_start_unwind = wasmExports['asyn
 var _asyncify_stop_unwind = () => (_asyncify_stop_unwind = wasmExports['asyncify_stop_unwind'])();
 var _asyncify_start_rewind = (a0) => (_asyncify_start_rewind = wasmExports['asyncify_start_rewind'])(a0);
 var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports['asyncify_stop_rewind'])();
-var _Unbound = Module['_Unbound'] = 90372;
-var _inside_evaluator = Module['_inside_evaluator'] = 29712;
-var _in_eval_save = Module['_in_eval_save'] = 29852;
-var _int_during_gc = Module['_int_during_gc'] = 159260;
-var _Buttonact = Module['_Buttonact'] = 90408;
-var _inside_gc = Module['_inside_gc'] = 159256;
-var _LOGO_GIL = Module['_LOGO_GIL'] = 25432;
-var _animationFrameID = Module['_animationFrameID'] = 160608;
+var _Unbound = Module['_Unbound'] = 90420;
+var _inside_evaluator = Module['_inside_evaluator'] = 29760;
+var _in_eval_save = Module['_in_eval_save'] = 29900;
+var _int_during_gc = Module['_int_during_gc'] = 159308;
+var _Buttonact = Module['_Buttonact'] = 90456;
+var _inside_gc = Module['_inside_gc'] = 159304;
+var _LOGO_GIL = Module['_LOGO_GIL'] = 25464;
+var _animationFrameID = Module['_animationFrameID'] = 160656;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
