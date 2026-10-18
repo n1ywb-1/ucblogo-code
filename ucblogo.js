@@ -435,7 +435,25 @@ Module.graphics.pen_down = () => {
         delete Module.graphics.masknum++;
     }
 };
+
+Module.graphics.onresize = (evt) => {
+    console.log('window.visualViewport.height', window.visualViewport.height)
+    document.getElementById('appContainer')
+        .setAttribute('style', `width: 100%; height: ${window.visualViewport.height - 8 - 16}px;`)
+    outputElement.scrollTop = outputElement.scrollHeight; // focus on bottom
+    setTimeout(() => window.scrollTo({
+        top: 0,
+        left: 0,
+        // behavior: 'smooth'
+    }), 100);
+};
+
+Module.graphics.dispatchResize = () => {
+    setTimeout(()=>window.visualViewport.dispatchEvent(new Event('resize')), 0);
+}
+
 Module.graphics.full_screen = () => { console.log(`full_screen ${[]}`) };
+
 Module.graphics.split_screen = () => {
     if (Module.graphics.mode == 'split_screen') return;
     Module.graphics.mode = 'split_screen';
@@ -6222,8 +6240,8 @@ async function createWasm() {
 // End JS library code
 
 var ASM_CONSTS = {
-  573299: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
- 573428: () => { console.log("dropped frame due to LOGO_GIL") }
+  573347: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
+ 573476: () => { console.log("dropped frame due to LOGO_GIL") }
 };
 function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift()?.charCodeAt(0); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
 function em_fflush(fh) { _fflush(fh) }
@@ -6453,15 +6471,15 @@ var _asyncify_start_unwind = (a0) => (_asyncify_start_unwind = wasmExports['asyn
 var _asyncify_stop_unwind = () => (_asyncify_stop_unwind = wasmExports['asyncify_stop_unwind'])();
 var _asyncify_start_rewind = (a0) => (_asyncify_start_rewind = wasmExports['asyncify_start_rewind'])(a0);
 var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports['asyncify_stop_rewind'])();
-var _Unbound = Module['_Unbound'] = 634596;
-var _inside_evaluator = Module['_inside_evaluator'] = 573936;
-var _in_eval_save = Module['_in_eval_save'] = 574076;
-var _int_during_gc = Module['_int_during_gc'] = 703484;
-var _Buttonact = Module['_Buttonact'] = 634632;
-var _inside_gc = Module['_inside_gc'] = 703480;
-var _LOGO_GIL = Module['_LOGO_GIL'] = 569640;
-var _animationFrameID = Module['_animationFrameID'] = 704832;
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 543172;
+var _Unbound = Module['_Unbound'] = 634644;
+var _inside_evaluator = Module['_inside_evaluator'] = 573984;
+var _in_eval_save = Module['_in_eval_save'] = 574124;
+var _int_during_gc = Module['_int_during_gc'] = 703532;
+var _Buttonact = Module['_Buttonact'] = 634680;
+var _inside_gc = Module['_inside_gc'] = 703528;
+var _LOGO_GIL = Module['_LOGO_GIL'] = 569688;
+var _animationFrameID = Module['_animationFrameID'] = 704880;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 543220;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
