@@ -271,6 +271,7 @@ Module.graphics.graphics_init = () => {
         // suppress context menu
         evt.preventDefault();
     }, { capture: true });
+    window.addEventListener("deviceorientation", Module.ondeviceorientation);
 };
 Module.graphics.prepare_to_draw = () => {
     // console.log("prepare_to_draw");
@@ -663,12 +664,13 @@ function logostop() {
     Module.FS_runjs_getChar_buffer_append_obj('logoStop');
 }
 
-function logoRun(runliststr, echo) {
+function runLogo(runliststr, echo) {
     if (echo) {
         Module.FS_runjs_getChar_buffer_append_str(`pr [${runliststr}] ${runliststr}`);
     } else {
         Module.FS_runjs_getChar_buffer_append_str(runliststr);
     }
+    Module.run_evaluator(true);
 }
 
 Module.uploadFile = async file => {
@@ -678,7 +680,7 @@ Module.uploadFileButtonClicked = async evt => {
     try {
         await Promise.all(Array.from(evt.target.files).map(async f => {
             await Module.uploadFile(f);
-            logoRun(`load "|${f.name.replace('|', '\\|')}|`, true);
+            runLogo(`load "|${f.name.replace('|', '\\|')}|`, true);
         }));
     }
     catch (error) {
@@ -687,7 +689,7 @@ Module.uploadFileButtonClicked = async evt => {
     }
 };
 Module.downloadSessionClicked = async (event) => {
-    logoRun(`save "/tmp/ucblogo_session.lgo`, true);
+    runLogo(`save "/tmp/ucblogo_session.lgo`, true);
     await new Promise(res => setTimeout(res, 0));
     const contents = FS.readFile('/tmp/ucblogo_session.lgo');
     var stringContents = new TextDecoder().decode(contents);
@@ -964,19 +966,23 @@ const EVT_T_KEYUP = 5;
 const EVT_T_KEYPRESS = 6;
 const EVT_T_PAUSELOGO = 7;
 const EVT_T_STOPLOGO = 8;
+const EVT_T_ANIMATE = 9;
+const EVT_T_ORIENTATION = 10;
 
  Module.uieventypes = {
-    'mousedown': EVT_T_MOUSEDOWN,
-    'mouseup': EVT_T_MOUSEUP,
-    'click': EVT_T_CLICK, 
-    'mousemove': EVT_T_MOUSEMOVE,
-    'keydown': EVT_T_KEYDOWN,
-    'keyup': EVT_T_KEYUP,
-    'keypress': EVT_T_KEYPRESS,
+    mousedown: EVT_T_MOUSEDOWN,
+    mouseup: EVT_T_MOUSEUP,
+    click: EVT_T_CLICK, 
+    mousemove: EVT_T_MOUSEMOVE,
+    keydown: EVT_T_KEYDOWN,
+    keyup: EVT_T_KEYUP,
+    keypress: EVT_T_KEYPRESS,
     // TODO these can be simple flags, and should be higher
     // priority than ui events
-    'pauselogo': 7,
-    'stoplogo': 8,
+    pauselogo: EVT_T_PAUSELOGO,
+    stoplogo: EVT_T_STOPLOGO,
+    animate: EVT_T_ANIMATE,
+    orientation: EVT_T_ORIENTATION
 }
 
 Module.gdk_keycodes = {
@@ -986,11 +992,12 @@ Module.gdk_keycodes = {
    'ArrowUp': 0xFF52,
 }
 
-Module.run_evaluator = () => {
+Module.run_evaluator = (readcurline) => {
+    if (readcurline === undefined) readcurline = false;
     if (Asyncify.state === 0 
         && getValue(Module['_LOGO_GIL']) === 0
     ) {
-        Module._run_evaluator(false);
+        Module._run_evaluator(readcurline);
     }
     else {
         const timeout = Module.WEB_WAIT_TIMEOUT_ID;
@@ -1056,7 +1063,14 @@ Module.onstoplogo = (evt) => {
     });
     Module.run_evaluator(false);
 }
- // end include: pre.js
+ 
+Module.ondeviceorientation = (evt) => {
+    const { alpha, beta, gamma } = evt;
+    Module.uievents.unshift({
+        type: EVT_T_ORIENTATION,
+        alpha, beta, gamma
+    })
+}// end include: pre.js
 // include: /home/jeff/emsdk/upstream/emscripten/src/emrun_prejs.js
 /**
  * @license
@@ -5043,8 +5057,6 @@ async function createWasm() {
       return runEmAsmFunction(code, sigPtr, argbuf);
     };
 
-  var _emscripten_cancel_animation_frame = (id) => cancelAnimationFrame(id);
-
 
   var reallyNegative = (x) => x < 0 || (x === 0 && (1/x) === -Infinity);
   
@@ -5948,20 +5960,64 @@ async function createWasm() {
       }
       const evt = Module.uievents.pop();
       setValue(evtptr, evt.type, 'i32');
+      // struct layout reverse engineered with chrome dev tools
       switch (evt.type) {
+          // 4 pad bytes for double alignment
+          case EVT_T_ANIMATE:
+              setValue(evtptr + 8, evt.time, 'double');
+              break;
           case EVT_T_MOUSEDOWN:
           case EVT_T_MOUSEUP:
           case EVT_T_MOUSEMOVE:
-              setValue(evtptr + 4, evt.button, 'i32');
-              setValue(evtptr + 4 + 4, evt.x, 'i32');
-              setValue(evtptr + 4 + 4 + 4, evt.y, 'i32');
+              setValue(evtptr + 8, evt.button, 'i32');
+              setValue(evtptr + 8 + 4, evt.x, 'i32');
+              setValue(evtptr + 8 + 4 + 4, evt.y, 'i32');
               break;
           case EVT_T_KEYDOWN:
           case EVT_T_KEYUP:
-              setValue(evtptr + 4, evt.key, 'i32');
+              setValue(evtptr + 8, evt.key, 'i32');
               break;
+          case EVT_T_ORIENTATION:
+              setValue(evtptr + 8, evt.alpha, 'double');
+              setValue(evtptr + 8 + 8, evt.beta, 'double');
+              setValue(evtptr + 8 + 8 + 8, evt.gamma, 'double');
+  
       }
      return 1;
+  };
+
+  var _lanimationstart = (ignored) => {
+      const animationLoop = (time) => {
+          if (!Module.graphics.animating) return;
+          if (Module.uievents[Module.uievents.length - 1]?.type !== EVT_T_ANIMATE) {
+              Module.uievents.push({type: EVT_T_ANIMATE, time})
+              setValue(Module._yield_enabled, 0, 'i32');
+              Module.run_evaluator(false);
+              setValue(Module._yield_enabled, 1, 'i32');
+          }
+          else {
+              console.warn('dropped frame')
+          }
+          if (!Module.graphics.animating) return;
+          if (getValue(Module._stopping_flag, 'i32') != 3) {
+              Module.graphics.animationFrameID = requestAnimationFrame(animationLoop);
+          }
+      };
+  
+      if (!Module.graphics.animating) {
+          Module.graphics.animating = true;
+          Module.graphics.animationFrameID = requestAnimationFrame(animationLoop);
+      }
+      return getValue(Module._Unbound, '*');
+  };
+
+  var _lanimationstop = (ignored) => {
+      if (Module.graphics.animating) {
+          cancelAnimationFrame(Module.graphics.animationFrameID);
+          Module.graphics.animating = false;
+          Module.graphics.animationFrameID = 0;
+      }
+      return getValue(Module._Unbound, '*');
   };
 
   var _peek_uievent = (evtptr) => {
@@ -5970,27 +6026,6 @@ async function createWasm() {
       const evt = Module.uievents[l - 1];
       setValue(evtptr, evt.type, 'i32');
       return l;
-  };
-
-  var _safe_request_animation_frame = (cb, userData) => {
-      function _sraf() {
-          return requestAnimationFrame(
-              (timeStamp) => {
-                  if (Asyncify.state === 0) {
-                      ((a1, a2) => dynCall_idi(cb, a1, a2))(timeStamp, userData)
-                  }
-                  else {
-                      console.warn('dropped frame currState != 0');
-                      // FIXME update animationFrameID global
-                      setTimeout(
-                          ()=>Module.setValue(Module['_animationFrameID'], _sraf(), 'i32'),
-                          0
-                      );
-                  }
-              }
-          )
-      }
-      return _sraf();
   };
 
   var _webLogoSleep = (ms) => {
@@ -6428,8 +6463,7 @@ if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); };
 // End JS library code
 
 var ASM_CONSTS = {
-  29107: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
- 29236: () => { console.log("dropped frame due to LOGO_GIL") }
+  29155: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } }
 };
 function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift()?.charCodeAt(0); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
 function em_fflush(fh) { _fflush(fh) }
@@ -6503,8 +6537,6 @@ var wasmImports = {
   /** @export */
   emscripten_asm_const_int: _emscripten_asm_const_int,
   /** @export */
-  emscripten_cancel_animation_frame: _emscripten_cancel_animation_frame,
-  /** @export */
   emscripten_date_now: _emscripten_date_now,
   /** @export */
   emscripten_log: _emscripten_log,
@@ -6549,6 +6581,10 @@ var wasmImports = {
   /** @export */
   label,
   /** @export */
+  lanimationstart: _lanimationstart,
+  /** @export */
+  lanimationstop: _lanimationstop,
+  /** @export */
   line_to,
   /** @export */
   logofill,
@@ -6556,8 +6592,6 @@ var wasmImports = {
   move_to,
   /** @export */
   peek_uievent: _peek_uievent,
-  /** @export */
-  safe_request_animation_frame: _safe_request_animation_frame,
   /** @export */
   save_pen,
   /** @export */
@@ -6650,7 +6684,6 @@ var dynCall_ddd = Module['dynCall_ddd'] = (a0, a1, a2) => (dynCall_ddd = Module[
 var dynCall_id = Module['dynCall_id'] = (a0, a1) => (dynCall_id = Module['dynCall_id'] = wasmExports['dynCall_id'])(a0, a1);
 var dynCall_v = Module['dynCall_v'] = (a0) => (dynCall_v = Module['dynCall_v'] = wasmExports['dynCall_v'])(a0);
 var dynCall_vii = Module['dynCall_vii'] = (a0, a1, a2) => (dynCall_vii = Module['dynCall_vii'] = wasmExports['dynCall_vii'])(a0, a1, a2);
-var dynCall_idi = Module['dynCall_idi'] = (a0, a1, a2) => (dynCall_idi = Module['dynCall_idi'] = wasmExports['dynCall_idi'])(a0, a1, a2);
 var dynCall_jiji = Module['dynCall_jiji'] = (a0, a1, a2, a3) => (dynCall_jiji = Module['dynCall_jiji'] = wasmExports['dynCall_jiji'])(a0, a1, a2, a3);
 var dynCall_iidiiii = Module['dynCall_iidiiii'] = (a0, a1, a2, a3, a4, a5, a6) => (dynCall_iidiiii = Module['dynCall_iidiiii'] = wasmExports['dynCall_iidiiii'])(a0, a1, a2, a3, a4, a5, a6);
 var _asyncify_start_unwind = (a0) => (_asyncify_start_unwind = wasmExports['asyncify_start_unwind'])(a0);
@@ -6660,11 +6693,11 @@ var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports['asyncify
 var _Unbound = Module['_Unbound'] = 90404;
 var _inside_evaluator = Module['_inside_evaluator'] = 29744;
 var _in_eval_save = Module['_in_eval_save'] = 29884;
-var _int_during_gc = Module['_int_during_gc'] = 159292;
+var _int_during_gc = Module['_int_during_gc'] = 159324;
 var _Buttonact = Module['_Buttonact'] = 90440;
-var _inside_gc = Module['_inside_gc'] = 159288;
-var _LOGO_GIL = Module['_LOGO_GIL'] = 25448;
-var _animationFrameID = Module['_animationFrameID'] = 160640;
+var _inside_gc = Module['_inside_gc'] = 159320;
+var _LOGO_GIL = Module['_LOGO_GIL'] = 25496;
+var _animationFrameID = Module['_animationFrameID'] = 160668;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {

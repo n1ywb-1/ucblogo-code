@@ -238,6 +238,7 @@ Module.graphics.graphics_init = () => {
         // suppress context menu
         evt.preventDefault();
     }, { capture: true });
+    window.addEventListener("deviceorientation", Module.ondeviceorientation);
 };
 Module.graphics.prepare_to_draw = () => {
     // console.log("prepare_to_draw");
@@ -630,12 +631,13 @@ function logostop() {
     Module.FS_runjs_getChar_buffer_append_obj('logoStop');
 }
 
-function logoRun(runliststr, echo) {
+function runLogo(runliststr, echo) {
     if (echo) {
         Module.FS_runjs_getChar_buffer_append_str(`pr [${runliststr}] ${runliststr}`);
     } else {
         Module.FS_runjs_getChar_buffer_append_str(runliststr);
     }
+    Module.run_evaluator(true);
 }
 
 Module.uploadFile = async file => {
@@ -645,7 +647,7 @@ Module.uploadFileButtonClicked = async evt => {
     try {
         await Promise.all(Array.from(evt.target.files).map(async f => {
             await Module.uploadFile(f);
-            logoRun(`load "|${f.name.replace('|', '\\|')}|`, true);
+            runLogo(`load "|${f.name.replace('|', '\\|')}|`, true);
         }));
     }
     catch (error) {
@@ -654,7 +656,7 @@ Module.uploadFileButtonClicked = async evt => {
     }
 };
 Module.downloadSessionClicked = async (event) => {
-    logoRun(`save "/tmp/ucblogo_session.lgo`, true);
+    runLogo(`save "/tmp/ucblogo_session.lgo`, true);
     await new Promise(res => setTimeout(res, 0));
     const contents = FS.readFile('/tmp/ucblogo_session.lgo');
     var stringContents = new TextDecoder().decode(contents);
@@ -931,19 +933,23 @@ const EVT_T_KEYUP = 5;
 const EVT_T_KEYPRESS = 6;
 const EVT_T_PAUSELOGO = 7;
 const EVT_T_STOPLOGO = 8;
+const EVT_T_ANIMATE = 9;
+const EVT_T_ORIENTATION = 10;
 
  Module.uieventypes = {
-    'mousedown': EVT_T_MOUSEDOWN,
-    'mouseup': EVT_T_MOUSEUP,
-    'click': EVT_T_CLICK, 
-    'mousemove': EVT_T_MOUSEMOVE,
-    'keydown': EVT_T_KEYDOWN,
-    'keyup': EVT_T_KEYUP,
-    'keypress': EVT_T_KEYPRESS,
+    mousedown: EVT_T_MOUSEDOWN,
+    mouseup: EVT_T_MOUSEUP,
+    click: EVT_T_CLICK, 
+    mousemove: EVT_T_MOUSEMOVE,
+    keydown: EVT_T_KEYDOWN,
+    keyup: EVT_T_KEYUP,
+    keypress: EVT_T_KEYPRESS,
     // TODO these can be simple flags, and should be higher
     // priority than ui events
-    'pauselogo': 7,
-    'stoplogo': 8,
+    pauselogo: EVT_T_PAUSELOGO,
+    stoplogo: EVT_T_STOPLOGO,
+    animate: EVT_T_ANIMATE,
+    orientation: EVT_T_ORIENTATION
 }
 
 Module.gdk_keycodes = {
@@ -953,11 +959,12 @@ Module.gdk_keycodes = {
    'ArrowUp': 0xFF52,
 }
 
-Module.run_evaluator = () => {
+Module.run_evaluator = (readcurline) => {
+    if (readcurline === undefined) readcurline = false;
     if (Asyncify.state === 0 
         && getValue(Module['_LOGO_GIL']) === 0
     ) {
-        Module._run_evaluator(false);
+        Module._run_evaluator(readcurline);
     }
     else {
         const timeout = Module.WEB_WAIT_TIMEOUT_ID;
@@ -1024,3 +1031,10 @@ Module.onstoplogo = (evt) => {
     Module.run_evaluator(false);
 }
  
+Module.ondeviceorientation = (evt) => {
+    const { alpha, beta, gamma } = evt;
+    Module.uievents.unshift({
+        type: EVT_T_ORIENTATION,
+        alpha, beta, gamma
+    })
+}
