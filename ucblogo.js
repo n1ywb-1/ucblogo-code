@@ -6266,8 +6266,8 @@ async function createWasm() {
 // End JS library code
 
 var ASM_CONSTS = {
-  573989: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
- 574118: ($0, $1, $2) => { const o = Module.graphics.deviceOrientation; setValue($0, o.alpha, 'double'); setValue($1, o.beta, 'double'); setValue($2, o.gamma, 'double'); }
+  573991: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
+ 574120: ($0, $1, $2) => { const o = Module.graphics.deviceOrientation; setValue($0, o.alpha, 'double'); setValue($1, o.beta, 'double'); setValue($2, o.gamma, 'double'); }
 };
 function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift()?.charCodeAt(0); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
 function em_fflush(fh) { _fflush(fh) }
@@ -6313,7 +6313,7 @@ function web_filled_end() { Module.graphics.filled_end(); }
 function web_filled_add_point(x,y) { Module.graphics.filled_add_point(x, y); }
 function web_graphics_init() { if (typeof document !== 'undefined') { Module.graphics.graphics_init(); } }
 function web_keyp() { return 0; }
-function __asyncjs__getDeviceOrientationPermission() { return Asyncify.handleAsync(async () => { const dlg = document.getElementById('orientationPermissionDialog'); const ok = dlg.querySelector('button.ok'); const cancel = dlg.querySelector('button.cancel'); dlg.showModal(); try { const canceled = new Promise((res, rej) => { cancel.addEventListener('mousedown', () => { dlg.close(); res(false); }); }); const oked = new Promise((res,rej)=>ok.addEventListener('mousedown', async ()=>{ const r = await window.DeviceOrientationEvent.requestPermission(); if (r === 'granted') { window.addEventListener("deviceorientation", Module.ondeviceorientation); await new Promise((res, rej)=> window.addEventListener("deviceorientation", res, {once:true})); res(true); } else { console.error('DeviceOrientationEvent transient activation', r); res(false); } }, {once: true})); return await Promise.any(oked, canceled); } catch (error) { console.error(error); return false; } finally { dlg.close(); } }); }
+function __asyncjs__getDeviceOrientationPermission() { return Asyncify.handleAsync(async () => { const dlg = document.getElementById('orientationPermissionDialog'); const ok = dlg.querySelector('button.ok'); const cancel = dlg.querySelector('button.cancel'); dlg.showModal(); try { const canceled = new Promise((res, rej) => { cancel.addEventListener('mousedown', () => { dlg.close(); res(false); }); }); const oked = new Promise((res,rej)=>ok.addEventListener('mousedown', async ()=>{ const r = await window.DeviceOrientationEvent.requestPermission(); if (r === 'granted') { window.addEventListener("deviceorientation", Module.ondeviceorientation); await new Promise((res, rej)=> window.addEventListener("deviceorientation", res, {once:true})); res(true); } else { console.error('DeviceOrientationEvent transient activation', r); res(false); } }, {once: true})); return await Promise.any([oked, canceled]); } catch (error) { console.error(error); return false; } finally { dlg.close(); } }); }
 var wasmImports = {
   /** @export */
   __asyncjs__em_getc,
