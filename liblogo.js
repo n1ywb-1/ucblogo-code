@@ -94,11 +94,6 @@ get_uievent: (evtptr) => {
         case EVT_T_KEYUP:
             setValue(evtptr + 8, evt.key, 'i32');
             break;
-        case EVT_T_ORIENTATION:
-            setValue(evtptr + 8, evt.alpha, 'double');
-            setValue(evtptr + 8 + 8, evt.beta, 'double');
-            setValue(evtptr + 8 + 8 + 8, evt.gamma, 'double');
-
     }
    return 1;
 },
@@ -135,6 +130,6 @@ lanimationstop: (ignored) => {
         Module.graphics.animationFrameID = 0;
     }
     return getValue(Module._Unbound, '*');
-}
+},
 
 });

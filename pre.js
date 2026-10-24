@@ -238,7 +238,9 @@ Module.graphics.graphics_init = () => {
         // suppress context menu
         evt.preventDefault();
     }, { capture: true });
-    window.addEventListener("deviceorientation", Module.ondeviceorientation);
+    window.visualViewport.addEventListener('resize', Module.graphics.onresize);
+    Module.graphics.dispatchResize();
+    document.getElementById('logoInputText').focus();
 };
 Module.graphics.prepare_to_draw = () => {
     // console.log("prepare_to_draw");
@@ -934,7 +936,6 @@ const EVT_T_KEYPRESS = 6;
 const EVT_T_PAUSELOGO = 7;
 const EVT_T_STOPLOGO = 8;
 const EVT_T_ANIMATE = 9;
-const EVT_T_ORIENTATION = 10;
 
  Module.uieventypes = {
     mousedown: EVT_T_MOUSEDOWN,
@@ -948,8 +949,7 @@ const EVT_T_ORIENTATION = 10;
     // priority than ui events
     pauselogo: EVT_T_PAUSELOGO,
     stoplogo: EVT_T_STOPLOGO,
-    animate: EVT_T_ANIMATE,
-    orientation: EVT_T_ORIENTATION
+    animate: EVT_T_ANIMATE
 }
 
 Module.gdk_keycodes = {
@@ -1032,9 +1032,5 @@ Module.onstoplogo = (evt) => {
 }
  
 Module.ondeviceorientation = (evt) => {
-    const { alpha, beta, gamma } = evt;
-    Module.uievents.unshift({
-        type: EVT_T_ORIENTATION,
-        alpha, beta, gamma
-    })
+    Module.graphics.deviceOrientation = evt;
 }
