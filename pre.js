@@ -219,28 +219,37 @@ Module.graphics.pen_info = {
 // Module.graphics.lastclick = { offsetX: 0, offsetY: 0, button: 0 };
 // Module.graphics.lastmove = { offsetX: 0, offsetY: 0, button: 0 };
 Module.graphics.graphics_init = () => {
-    if (typeof document === 'undefined') return;
-    const g = Module.graphics;
-    // console.log("graphics_init");
-    g.clear_screen();
-    g.masknum = 0;
-    const ld = document.getElementById('logoDrawing');
-    Module.graphics.set_back_ground(0);
-    Module.graphics.buttonp = false;
-    ld.addEventListener('mousedown', Module.onmousedown, { capture: true });
-    ld.addEventListener('mouseup', Module.onmouseup, { capture: true });
-    ld.addEventListener('mousemove', Module.onmousemove);
-    // todo touch support
-    // if (document.ontouchstart) {
-    // ld.addEventListener('touchstart', handleMouseDown, { capture: true });
-    // todo right-button support
-    ld.addEventListener('contextmenu', (evt) => {
-        // suppress context menu
-        evt.preventDefault();
-    }, { capture: true });
-    window.visualViewport.addEventListener('resize', Module.graphics.onresize);
-    Module.graphics.dispatchResize();
-    document.getElementById('logoInputText').focus();
+    const inner_graphics_init = ()=>{
+        if (typeof document === 'undefined') return;
+        const g = Module.graphics;
+        // console.log("graphics_init");
+        g.clear_screen();
+        g.masknum = 0;
+        const ld = document.getElementById('logoDrawing');
+        Module.graphics.set_back_ground(0);
+        Module.graphics.buttonp = false;
+        ld.addEventListener('mousedown', Module.onmousedown, { capture: true });
+        ld.addEventListener('mouseup', Module.onmouseup, { capture: true });
+        ld.addEventListener('mousemove', Module.onmousemove);
+        // todo touch support
+        // if (document.ontouchstart) {
+        // ld.addEventListener('touchstart', handleMouseDown, { capture: true });
+        // todo right-button support
+        ld.addEventListener('contextmenu', (evt) => {
+            // suppress context menu
+            evt.preventDefault();
+        }, { capture: true });
+        window.visualViewport.addEventListener('resize', Module.graphics.onresize);
+        Module.graphics.dispatchResize();
+        document.getElementById('logoInputText').focus();
+        document.getElementById('speakOutputSelect').addEventListener('click', (e)=>{
+            Module.graphics.speakOutput = e.target.checked;
+        })
+    }
+    if (document.readyState === 'loading')
+        window.addEventListener('DOMContentLoaded', inner_graphics_init, {once: true});
+    else
+        inner_graphics_init();
 };
 Module.graphics.prepare_to_draw = () => {
     // console.log("prepare_to_draw");
@@ -945,8 +954,6 @@ const EVT_T_ANIMATE = 9;
     keydown: EVT_T_KEYDOWN,
     keyup: EVT_T_KEYUP,
     keypress: EVT_T_KEYPRESS,
-    // TODO these can be simple flags, and should be higher
-    // priority than ui events
     pauselogo: EVT_T_PAUSELOGO,
     stoplogo: EVT_T_STOPLOGO,
     animate: EVT_T_ANIMATE
@@ -1024,6 +1031,7 @@ Module.onpauselogo = (evt) => {
 }
 
 Module.onstoplogo = (evt) => {
+    _lanimationstop();
     if (getValue(Module['_LOGO_GIL']) === 0) return;
     Module.uievents.splice(0, Module.uievents.length, {
         type: EVT_T_STOPLOGO
