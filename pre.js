@@ -169,7 +169,7 @@ const BLON = {
         };
         const outerHelper = helper(noAddBrackets);
         const innerHelper = helper(addBrackets);
-        return outerHelper(obj);
+        return outerHelper(obj).replace(/[^\x00-\x7F]/g, '*');
     }
 };
 Module.FS_runjs_getChar_buffer_append_obj = (obj) => {
@@ -189,6 +189,7 @@ Module.FS_runjs_getChar_buffer_append_str = (str) => {
     Module.FS_runjs_getChar_buffer.push(...chars);
     document.dispatchEvent(new CustomEvent("getcharready"));
 }
+
 Module.runjs = (expr) => {
     if (typeof document === 'undefined') return;
     let r;
@@ -196,7 +197,7 @@ Module.runjs = (expr) => {
         r = eval(expr);
     }
     catch (error) {
-        r = error.toString();
+        r = error.toString().replace(/[^\x00-\x7F]/g, '*');
         console.error(error);
         window.alert(r);
     }
@@ -207,6 +208,7 @@ Module.runjs = (expr) => {
         Module.FS_runjs_getChar_buffer_append_obj(r);
     }
 };
+
 Module.env = {};
 Module.graphics.pen_info = {
     x: 320,
@@ -447,8 +449,16 @@ Module.graphics.split_screen = () => {
         .style.setProperty('display', 'flex');
     window.dispatchEvent(new Event('resize'));
 };
+Module.graphics.animationStop = () => {
+    if (Module.graphics.animating) {
+        cancelAnimationFrame(Module.graphics.animationFrameID);
+        Module.graphics.animating = false;
+        Module.graphics.animationFrameID = 0;
+    }
+};
 Module.graphics.text_screen = () => {
     if (Module.graphics.mode == 'text_screen') return;
+    Module.graphics.animationStop();
     Module.graphics.mode = 'text_screen';
     console.log(`text_screen ${[]}`);
     document.getElementById('svgContainer')
@@ -718,6 +728,7 @@ Module.commandHistoryIdx = -1;
 Module.currentCommand = null;
 Module.handleKeyDown = evt => {
     // for keyact
+    // FIXME this should only fire in charmode after keyp is called
     Module.onkeydown(evt);
 
     const inputText = document.getElementById('logoInputText');
@@ -980,6 +991,9 @@ Module.run_evaluator = (readcurline) => {
             clearTimeout(timeout);
             Module.WEB_WAIT_WAKEUP();
         }
+        else if (Module.blockedOnGetc) {
+            document.dispatchEvent(new CustomEvent('getcharready'));
+        }
     }
 }
 
@@ -1014,11 +1028,13 @@ Module.onmousemove = (evt) => {
 
 Module.onkeydown = (evt) => {
     // evt.preventDefault();
-    Module.uievents.unshift({
-        type: Module.uieventypes['keydown'],   
-        key: Module.gdk_keycodes[evt.key] || evt.key.charCodeAt(0),
-    });
-    Module.run_evaluator(false);
+    if (getValue(Module._tty_charmode, 'i32')) {
+        Module.uievents.unshift({
+            type: Module.uieventypes['keydown'],   
+            key: Module.gdk_keycodes[evt.key] || evt.key.charCodeAt(0),
+        });
+        Module.run_evaluator(false);
+    }
     return false;
 }
 
@@ -1031,7 +1047,7 @@ Module.onpauselogo = (evt) => {
 }
 
 Module.onstoplogo = (evt) => {
-    _lanimationstop();
+    Module.graphics.animationStop();
     if (getValue(Module['_LOGO_GIL']) === 0) return;
     Module.uievents.splice(0, Module.uievents.length, {
         type: EVT_T_STOPLOGO
@@ -1041,4 +1057,15 @@ Module.onstoplogo = (evt) => {
  
 Module.ondeviceorientation = (evt) => {
     Module.graphics.deviceOrientation = evt;
+}
+
+if (typeof SpeechSynthesisUtterance !== 'undefined') {
+    Module.utterance = new SpeechSynthesisUtterance();
+
+    Module.speak  = (text) => {
+        if (text.length) {
+            Module.utterance.text = text;
+            speechSynthesis.speak(Module.utterance);
+        }
+    }
 }

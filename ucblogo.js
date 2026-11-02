@@ -198,7 +198,7 @@ const BLON = {
         };
         const outerHelper = helper(noAddBrackets);
         const innerHelper = helper(addBrackets);
-        return outerHelper(obj);
+        return outerHelper(obj).replace(/[^\x00-\x7F]/g, '*');
     }
 };
 Module.FS_runjs_getChar_buffer_append_obj = (obj) => {
@@ -218,6 +218,7 @@ Module.FS_runjs_getChar_buffer_append_str = (str) => {
     Module.FS_runjs_getChar_buffer.push(...chars);
     document.dispatchEvent(new CustomEvent("getcharready"));
 }
+
 Module.runjs = (expr) => {
     if (typeof document === 'undefined') return;
     let r;
@@ -225,7 +226,7 @@ Module.runjs = (expr) => {
         r = eval(expr);
     }
     catch (error) {
-        r = error.toString();
+        r = error.toString().replace(/[^\x00-\x7F]/g, '*');
         console.error(error);
         window.alert(r);
     }
@@ -236,6 +237,7 @@ Module.runjs = (expr) => {
         Module.FS_runjs_getChar_buffer_append_obj(r);
     }
 };
+
 Module.env = {};
 Module.graphics.pen_info = {
     x: 320,
@@ -476,8 +478,16 @@ Module.graphics.split_screen = () => {
         .style.setProperty('display', 'flex');
     window.dispatchEvent(new Event('resize'));
 };
+Module.graphics.animationStop = () => {
+    if (Module.graphics.animating) {
+        cancelAnimationFrame(Module.graphics.animationFrameID);
+        Module.graphics.animating = false;
+        Module.graphics.animationFrameID = 0;
+    }
+};
 Module.graphics.text_screen = () => {
     if (Module.graphics.mode == 'text_screen') return;
+    Module.graphics.animationStop();
     Module.graphics.mode = 'text_screen';
     console.log(`text_screen ${[]}`);
     document.getElementById('svgContainer')
@@ -747,6 +757,7 @@ Module.commandHistoryIdx = -1;
 Module.currentCommand = null;
 Module.handleKeyDown = evt => {
     // for keyact
+    // FIXME this should only fire in charmode after keyp is called
     Module.onkeydown(evt);
 
     const inputText = document.getElementById('logoInputText');
@@ -1009,6 +1020,9 @@ Module.run_evaluator = (readcurline) => {
             clearTimeout(timeout);
             Module.WEB_WAIT_WAKEUP();
         }
+        else if (Module.blockedOnGetc) {
+            document.dispatchEvent(new CustomEvent('getcharready'));
+        }
     }
 }
 
@@ -1043,11 +1057,13 @@ Module.onmousemove = (evt) => {
 
 Module.onkeydown = (evt) => {
     // evt.preventDefault();
-    Module.uievents.unshift({
-        type: Module.uieventypes['keydown'],   
-        key: Module.gdk_keycodes[evt.key] || evt.key.charCodeAt(0),
-    });
-    Module.run_evaluator(false);
+    if (getValue(Module._tty_charmode, 'i32')) {
+        Module.uievents.unshift({
+            type: Module.uieventypes['keydown'],   
+            key: Module.gdk_keycodes[evt.key] || evt.key.charCodeAt(0),
+        });
+        Module.run_evaluator(false);
+    }
     return false;
 }
 
@@ -1060,7 +1076,7 @@ Module.onpauselogo = (evt) => {
 }
 
 Module.onstoplogo = (evt) => {
-    _lanimationstop();
+    Module.graphics.animationStop();
     if (getValue(Module['_LOGO_GIL']) === 0) return;
     Module.uievents.splice(0, Module.uievents.length, {
         type: EVT_T_STOPLOGO
@@ -1070,7 +1086,19 @@ Module.onstoplogo = (evt) => {
  
 Module.ondeviceorientation = (evt) => {
     Module.graphics.deviceOrientation = evt;
-}// end include: pre.js
+}
+
+if (typeof SpeechSynthesisUtterance !== 'undefined') {
+    Module.utterance = new SpeechSynthesisUtterance();
+
+    Module.speak  = (text) => {
+        if (text.length) {
+            Module.utterance.text = text;
+            speechSynthesis.speak(Module.utterance);
+        }
+    }
+}
+// end include: pre.js
 // include: /home/jeff/emsdk/upstream/emscripten/src/emrun_prejs.js
 /**
  * @license
@@ -5576,20 +5604,39 @@ async function createWasm() {
         callUserCallback(func);
       }, timeout);
     };
+  
+  
+  var safeYield = () => {
+  runtimeKeepalivePush();
+  return scheduler.yield().then(()=>{
+      runtimeKeepalivePop();
+  })
+  };
   var _emscripten_scan_registers = (func) => {
       return Asyncify.handleSleep((wakeUp) => {
-        // We must first unwind, so things are spilled to the stack. Then while
-        // we are pausing we do the actual scan. After that we can resume. Note
-        // how using a timeout here avoids unbounded call stack growth, which
-        // could happen if we tried to scan the stack immediately after unwinding.
-        safeSetTimeout(() => {
-          var stackBegin = Asyncify.currData + 12;
-          var stackEnd = HEAPU32[((Asyncify.currData)>>2)];
-          ((a1, a2) => dynCall_vii(func, a1, a2))(stackBegin, stackEnd);
-          wakeUp();
-        }, 0);
+          // We must first unwind, so things are spilled to the stack. Then while
+          // we are pausing we do the actual scan. After that we can resume. Note
+          // how using a timeout here avoids unbounded call stack growth, which
+          // could happen if we tried to scan the stack immediately after unwinding.
+  
+          if (globalThis.scheduler?.yield) {
+              safeYield().then(()=>{
+                  var stackBegin = Asyncify.currData + 12;
+                  var stackEnd = HEAPU32[((Asyncify.currData)>>2)];
+                  ((a1, a2) => dynCall_vii(func, a1, a2))(stackBegin, stackEnd);
+                  wakeUp();
+              });
+          }
+          else {
+              safeSetTimeout(() => {
+                  var stackBegin = Asyncify.currData + 12;
+                  var stackEnd = HEAPU32[((Asyncify.currData)>>2)];
+                  ((a1, a2) => dynCall_vii(func, a1, a2))(stackBegin, stackEnd);
+                  wakeUp();
+              }, 0);
+          }
       });
-    };
+  };
   _emscripten_scan_registers.isAsync = true;
 
   var ENV = {
@@ -5808,15 +5855,14 @@ async function createWasm() {
   var _lanimationstart = (ignored) => {
       const animationLoop = (time) => {
           if (!Module.graphics.animating) return;
-          Module.graphics.animationFrameID = requestAnimationFrame(animationLoop);
           if (Module.uievents[Module.uievents.length - 1]?.type !== EVT_T_ANIMATE) {
-              Module.uievents.push({type: EVT_T_ANIMATE, time})
+              Module.uievents.push({ type: EVT_T_ANIMATE, time });
               setValue(Module._yield_enabled, 0, 'i32');
               Module.run_evaluator(false);
               setValue(Module._yield_enabled, 1, 'i32');
           }
           else {
-              console.warn('dropped frame')
+              console.warn('dropped frame');
           }
           if (getValue(Module._stopping_flag, 'i32') == 3)
               Module.graphics.animating = false;
@@ -5824,6 +5870,8 @@ async function createWasm() {
               cancelAnimationFrame(Module.graphics.animationFrameID);
               Module.graphics.animationFrameID = 0;
           }
+          else
+              Module.graphics.animationFrameID = requestAnimationFrame(animationLoop);
       };
   
       if (!Module.graphics.animating) {
@@ -5834,11 +5882,7 @@ async function createWasm() {
   };
 
   var _lanimationstop = (ignored) => {
-      if (Module.graphics.animating) {
-          cancelAnimationFrame(Module.graphics.animationFrameID);
-          Module.graphics.animating = false;
-          Module.graphics.animationFrameID = 0;
-      }
+      Module.graphics.animationStop();
       return getValue(Module._Unbound, '*');
   };
 
@@ -5903,6 +5947,10 @@ async function createWasm() {
   });
   };
   _webLogoSleep.isAsync = true;
+
+  var _wxKeyp = ()=>{
+      return Module.FS_runjs_getChar_buffer.length > 0 ? 1 : 0;
+  };
 
   
   
@@ -6315,11 +6363,14 @@ async function createWasm() {
 // End JS library code
 
 var ASM_CONSTS = {
-  573925: () => { Module.uievents = new UIEventQueue(); },  
- 573965: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0) } },  
- 574094: ($0, $1, $2) => { const o = Module.graphics.deviceOrientation; setValue($0, o.alpha, 'double'); setValue($1, o.beta, 'double'); setValue($2, o.gamma, 'double'); }
+  575261: () => { window.alert("fatal logo error") },  
+ 575296: () => { Module.uievents = new UIEventQueue(); },  
+ 575336: () => { if (document !== undefined) { document.dispatchEvent( new CustomEvent('run_evaluator_end') ); } },  
+ 575436: ($0) => { if (typeof outputElement === 'undefined') { console.log(UTF8ToString($0)) } else { outputElement.value += UTF8ToString($0); } },  
+ 575566: ($0, $1, $2) => { const o = Module.graphics.deviceOrientation; setValue($0, o.alpha, 'double'); setValue($1, o.beta, 'double'); setValue($2, o.gamma, 'double'); }
 };
-function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); }); char = Module.FS_runjs_getChar_buffer.shift()?.charCodeAt(0); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
+function __asyncjs__em_getc() { return Asyncify.handleAsync(async () => { let char; if (typeof document != 'undefined') { if (!Module.FS_runjs_getChar_buffer.length) { Module.blockedOnGetc = true; console.log("em_getc: awaiting stdin"); await new Promise((res, rej) => { document.addEventListener('getcharready', res, { once: true }); document.dispatchEvent(new CustomEvent('awaitgetcharready')); }); Module.blockedOnGetc = false; } if (!Module.FS_runjs_getChar_buffer.length) { console.log("em_getc: stdin returned eof"); return -1; } char = Module.FS_runjs_getChar_buffer.shift(); if (typeof char === 'string') { char = char.charCodeAt(0); } console.log("em_getc: stdin returned", char); } else { char = process.stdin.read(1); while (char == null) { await new Promise((res,rej)=>{setTimeout(res,20)}); char = process.stdin.read(1); } } return char; }); }
+function em_ungetc(c) { if (typeof document != 'undefined') { Module.FS_runjs_getChar_buffer.unshift(String.fromCharCode(c)); } else { process.stdin.unshift(c); } return c; }
 function em_fflush(fh) { _fflush(fh) }
 function __asyncjs__web_edit(tmp_filename) { return Asyncify.handleAsync(async () => { try { await Module.editor.edit(UTF8ToString(tmp_filename)); } catch (error) { console.error(error); window.alert(error); } }); }
 function __asyncjs__web_get_any_key() { return Asyncify.handleAsync(async () => { await new Promise((res,rej)=>{ window.addEventListener( 'keydown', event=>{ event.preventDefault(); res(); return false; }, {once: true} ); }); }); }
@@ -6361,7 +6412,6 @@ function web_filled_begin(color) { Module.graphics.filled_begin(color); }
 function web_filled_end() { Module.graphics.filled_end(); }
 function web_filled_add_point(x,y) { Module.graphics.filled_add_point(x, y); }
 function web_graphics_init() { if (typeof document !== 'undefined') { Module.graphics.graphics_init(); } }
-function web_keyp() { return 0; }
 function __asyncjs__getDeviceOrientationPermission() { return Asyncify.handleAsync(async () => { const dlg = document.getElementById('orientationPermissionDialog'); const ok = dlg.querySelector('button.ok'); const cancel = dlg.querySelector('button.cancel'); dlg.showModal(); try { const canceled = new Promise((res, rej) => { cancel.addEventListener('mousedown', () => { dlg.close(); res(false); }); }); const oked = new Promise((res,rej)=>ok.addEventListener('mousedown', async ()=>{ const r = await window.DeviceOrientationEvent.requestPermission(); if (r === 'granted') { window.addEventListener("deviceorientation", Module.ondeviceorientation); await new Promise((res, rej)=> window.addEventListener("deviceorientation", res, {once:true})); res(true); } else { console.error('DeviceOrientationEvent transient activation', r); res(false); } }, {once: true})); return await Promise.any([oked, canceled]); } catch (error) { console.error(error.stack); return false; } finally { dlg.close(); } }); }
 var wasmImports = {
   /** @export */
@@ -6392,6 +6442,8 @@ var wasmImports = {
   adjust_label_height,
   /** @export */
   clock_time_get: _clock_time_get,
+  /** @export */
+  em_ungetc,
   /** @export */
   emscripten_asm_const_int: _emscripten_asm_const_int,
   /** @export */
@@ -6485,8 +6537,6 @@ var wasmImports = {
   /** @export */
   web_hide_turtle,
   /** @export */
-  web_keyp,
-  /** @export */
   web_pen_down,
   /** @export */
   web_pen_erase,
@@ -6502,6 +6552,8 @@ var wasmImports = {
   web_split_screen,
   /** @export */
   web_text_screen,
+  /** @export */
+  wxKeyp: _wxKeyp,
   /** @export */
   yield_to_js: _yield_to_js
 };
@@ -6548,15 +6600,17 @@ var _asyncify_start_unwind = (a0) => (_asyncify_start_unwind = wasmExports['asyn
 var _asyncify_stop_unwind = () => (_asyncify_stop_unwind = wasmExports['asyncify_stop_unwind'])();
 var _asyncify_start_rewind = (a0) => (_asyncify_start_rewind = wasmExports['asyncify_start_rewind'])(a0);
 var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports['asyncify_stop_rewind'])();
-var _Unbound = Module['_Unbound'] = 635364;
-var _inside_evaluator = Module['_inside_evaluator'] = 574704;
-var _in_eval_save = Module['_in_eval_save'] = 574844;
-var _int_during_gc = Module['_int_during_gc'] = 704268;
-var _Buttonact = Module['_Buttonact'] = 635400;
-var _inside_gc = Module['_inside_gc'] = 704264;
-var _LOGO_GIL = Module['_LOGO_GIL'] = 569384;
-var _animationFrameID = Module['_animationFrameID'] = 705612;
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 542888;
+var _Unbound = Module['_Unbound'] = 636836;
+var _inside_evaluator = Module['_inside_evaluator'] = 576176;
+var _in_eval_save = Module['_in_eval_save'] = 576316;
+var _int_during_gc = Module['_int_during_gc'] = 705740;
+var _interactive = Module['_interactive'] = 706808;
+var _Buttonact = Module['_Buttonact'] = 636872;
+var _inside_gc = Module['_inside_gc'] = 705736;
+var _LOGO_GIL = Module['_LOGO_GIL'] = 570216;
+var _tty_charmode = Module['_tty_charmode'] = 706932;
+var _animationFrameID = Module['_animationFrameID'] = 707084;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 543720;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
